@@ -3,33 +3,35 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
+use clap::Args;
 use humantime::parse_duration;
 use std::time::Duration;
-use structopt::StructOpt;
 
 use crate::transport::verilator::{Options, Verilator};
 use crate::transport::Transport;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct VerilatorOpts {
-    #[structopt(long, default_value)]
+    #[arg(long, default_value_t)]
     verilator_bin: String,
 
-    #[structopt(long, default_value)]
+    #[arg(long, default_value_t)]
     verilator_rom: String,
-    #[structopt(long)]
-    verilator_second_rom: Option<String>,
-    #[structopt(long, required = false)]
+
+    #[arg(long, required = false)]
+    verilator_second_rom: String,
+
+    #[arg(long, required = false)]
     verilator_flash: Vec<String>,
-    #[structopt(long, default_value)]
+    #[arg(long, default_value_t)]
     verilator_otp: String,
-    #[structopt(long, default_value)]
+    #[arg(long, default_value_t)]
     verilator_ram_ctn: String,
 
-    #[structopt(long, required = false)]
+    #[arg(long, required = false)]
     verilator_args: Vec<String>,
 
-    #[structopt(long, parse(try_from_str=parse_duration), default_value="60s", help = "Verilator startup timeout")]
+    #[arg(long, value_parser = parse_duration, default_value = "60s", help = "Verilator startup timeout")]
     verilator_timeout: Duration,
 }
 
@@ -37,7 +39,7 @@ pub fn create(args: &VerilatorOpts) -> Result<Box<dyn Transport>> {
     let options = Options {
         executable: args.verilator_bin.clone(),
         rom_image: args.verilator_rom.clone(),
-        second_rom_image: args.verilator_second_rom.clone(),
+        second_rom_image: Some(args.verilator_second_rom.clone()),
         flash_images: args.verilator_flash.clone(),
         otp_image: args.verilator_otp.clone(),
         ram_ctn_image: args.verilator_ram_ctn.clone(),
