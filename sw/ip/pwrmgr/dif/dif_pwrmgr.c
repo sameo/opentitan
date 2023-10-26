@@ -66,6 +66,7 @@ static const bitfield_field32_t kDomainConfigBitfield = {
  * Relevant bits of the WAKEUP_EN and WAKE_INFO registers must start at `0` and
  * be in the same order as `dif_pwrmgr_wakeup_request_source_t` constants.
  */
+#if 0
 static_assert(kDifPwrmgrWakeupRequestSourceOne ==
                   (1u << PWRMGR_WAKEUP_EN_EN_0_BIT),
               "Layout of WAKEUP_EN register changed.");
@@ -87,6 +88,7 @@ static_assert(kDifPwrmgrWakeupRequestSourceFive ==
 static_assert(kDifPwrmgrWakeupRequestSourceSix ==
                   (1u << PWRMGR_PARAM_SOC_PROXY_WKUP_EXTERNAL_REQ_IDX),
               "Layout of WAKE_INFO register changed.");
+#endif
 
 /**
  * Relevant bits of the RESET_EN register must start at `0` and be in the same

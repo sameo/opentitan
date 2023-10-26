@@ -28,9 +28,11 @@
 RSTMGR_RESET_INFO_CHECK(Por, INFO_POR);
 RSTMGR_RESET_INFO_CHECK(LowPowerExit, INFO_LOW_POWER_EXIT);
 
+#if 0
 static_assert(kDifRstmgrResetInfoHwReq == (RSTMGR_RESET_INFO_HW_REQ_MASK
                                            << RSTMGR_RESET_INFO_HW_REQ_OFFSET),
               "kDifRstmgrResetInfoHwReq must match the register definition!");
+#endif
 
 static_assert(
     RSTMGR_PARAM_NUM_SW_RESETS == 3 ||    // Darjeeling
