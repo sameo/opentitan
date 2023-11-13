@@ -2,13 +2,13 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "sw/lib/sw/device/silicon_creator/otbn_boot_services.h"
-
+#include "sw/device/silicon_creator/lib/drivers/flash_ctrl.h"
 #include "sw/device/silicon_creator/lib/drivers/hmac.h"
 #include "sw/device/silicon_creator/lib/drivers/keymgr.h"
 #include "sw/device/silicon_creator/lib/drivers/otbn.h"
 #include "sw/lib/sw/device/silicon_creator/attestation.h"
 #include "sw/lib/sw/device/silicon_creator/base/sec_mmio.h"
+#include "sw/lib/sw/device/silicon_creator/otbn_boot_services.h"
 
 OTBN_DECLARE_APP_SYMBOLS(boot);             // The OTBN boot-services app.
 OTBN_DECLARE_SYMBOL_ADDR(boot, mode);       // Application mode.
@@ -72,7 +72,7 @@ enum {
 rom_error_t otbn_boot_app_load(void) { return otbn_load_app(kOtbnAppBoot); }
 
 rom_error_t otbn_boot_attestation_keygen(
-    const attestation_seed_t *additional_seed,
+    attestation_key_seed_t additional_seed,
     keymgr_diversification_t diversification,
     attestation_public_key_t *public_key) {
   // Trigger key manager to sideload the attestation key into OTBN.
@@ -84,10 +84,16 @@ rom_error_t otbn_boot_attestation_keygen(
   HARDENED_RETURN_IF_ERROR(
       otbn_dmem_write(kOtbnBootModeWords, &mode, kOtbnVarBootMode));
 
-  // Write the additional seed.
+  // Load the additional seed from flash info.
+  uint32_t seed_flash_offset = 0 + (additional_seed * kAttestationSeedWords);
+  uint32_t seed[kAttestationSeedWords];
   HARDENED_RETURN_IF_ERROR(
-      otbn_dmem_write(kAttestationSeedWords, additional_seed->seed,
-                      kOtbnVarBootAttestationAdditionalSeed));
+      flash_ctrl_info_read(&kFlashCtrlInfoPageAttestationKeySeeds,
+                           seed_flash_offset, kAttestationSeedWords, seed));
+
+  // Write the additional seed to OTBN DMEM.
+  HARDENED_RETURN_IF_ERROR(otbn_dmem_write(
+      kAttestationSeedWords, seed, kOtbnVarBootAttestationAdditionalSeed));
 
   // Run the OTBN program (blocks until OTBN is done).
   HARDENED_RETURN_IF_ERROR(otbn_execute());
@@ -105,7 +111,7 @@ rom_error_t otbn_boot_attestation_keygen(
 }
 
 rom_error_t otbn_boot_attestation_key_save(
-    const attestation_seed_t *additional_seed,
+    attestation_key_seed_t additional_seed,
     keymgr_diversification_t diversification) {
   // Trigger key manager to sideload the attestation key into OTBN.
   HARDENED_RETURN_IF_ERROR(
@@ -116,10 +122,16 @@ rom_error_t otbn_boot_attestation_key_save(
   HARDENED_RETURN_IF_ERROR(
       otbn_dmem_write(kOtbnBootModeWords, &mode, kOtbnVarBootMode));
 
-  // Write the additional seed.
+  // Load the additional seed from flash info.
+  uint32_t seed_flash_offset = 0 + (additional_seed * kAttestationSeedWords);
+  uint32_t seed[kAttestationSeedWords];
   HARDENED_RETURN_IF_ERROR(
-      otbn_dmem_write(kAttestationSeedWords, additional_seed->seed,
-                      kOtbnVarBootAttestationAdditionalSeed));
+      flash_ctrl_info_read(&kFlashCtrlInfoPageAttestationKeySeeds,
+                           seed_flash_offset, kAttestationSeedWords, seed));
+
+  // Write the additional seed.
+  HARDENED_RETURN_IF_ERROR(otbn_dmem_write(
+      kAttestationSeedWords, seed, kOtbnVarBootAttestationAdditionalSeed));
 
   // Run the OTBN program (blocks until OTBN is done).
   HARDENED_RETURN_IF_ERROR(otbn_execute());
