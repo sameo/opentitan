@@ -10,6 +10,9 @@
 #include "sw/lib/sw/device/silicon_creator/base/sec_mmio.h"
 #include "sw/lib/sw/device/silicon_creator/otbn_boot_services.h"
 
+static_assert(kAttestationSeedWords <= 16,
+              "Additional attestation seed needs must be <= 516 bits.");
+
 OTBN_DECLARE_APP_SYMBOLS(boot);             // The OTBN boot-services app.
 OTBN_DECLARE_SYMBOL_ADDR(boot, mode);       // Application mode.
 OTBN_DECLARE_SYMBOL_ADDR(boot, rsa_mod);    // RSA modulus.
