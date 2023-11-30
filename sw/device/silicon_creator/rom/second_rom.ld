@@ -26,6 +26,7 @@ _second_rom_boot_address = ORIGIN(rom1);
 /**
  * Symbols to be used in the setup of the address translation for ROM_EXT.
  */
+_rom_ext_load_start = ORIGIN(ram_ctn) + LENGTH(rom_ext_virtual);
 _rom_ext_virtual_start = ORIGIN(rom_ext_virtual);
 _rom_ext_virtual_size = LENGTH(rom_ext_virtual);
 ASSERT((_rom_ext_virtual_size <= (LENGTH(ram_ctn) / 2)),

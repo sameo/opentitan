@@ -285,7 +285,6 @@ cc_library(
         "second_rom.h",
     ],
     deps = [
-        ":boot_policy",
         ":bootstrap",
         ":second_rom_epmp",
         ":sigverify_keys",
@@ -294,7 +293,6 @@ cc_library(
         "//hw/ip/aon_timer/data:aon_timer_regs",
         "//sw/device/silicon_creator/lib/drivers:alert",
         "//sw/device/silicon_creator/lib/drivers:ast",
-        "//sw/device/silicon_creator/lib/drivers:flash_ctrl",
         "//sw/device/silicon_creator/lib/drivers:ibex",
         "//sw/device/silicon_creator/lib/drivers:keymgr",
         "//sw/device/silicon_creator/lib/drivers:lifecycle",
@@ -304,6 +302,7 @@ cc_library(
         "//sw/device/silicon_creator/lib/drivers:retention_sram",
         "//sw/device/silicon_creator/lib/drivers:rnd",
         "//sw/device/silicon_creator/lib/drivers:rstmgr",
+        "//sw/device/silicon_creator/lib/drivers:spi_host",
         "//sw/device/silicon_creator/lib/drivers:uart",
         "//sw/device/silicon_creator/lib/drivers:watchdog",
         "//sw/lib/sw/device/arch:device",
@@ -322,9 +321,11 @@ cc_library(
         "//sw/lib/sw/device/silicon_creator/base:sec_mmio",
         "//sw/lib/sw/device/silicon_creator/base:static_critical",
         "//sw/lib/sw/device/silicon_creator/sigverify",
+        "//sw/top_darjeeling/sw/device/silicon_creator:ext_flash",
         "//sw/top_darjeeling/sw/device/silicon_creator:irq_asm",
         "//sw/top_darjeeling/sw/device/silicon_creator:manifest",
         "//sw/top_darjeeling/sw/device/silicon_creator:shutdown",
+        "//sw/top_darjeeling/sw/device/silicon_creator:spi_nor_flash",
     ],
 )
 

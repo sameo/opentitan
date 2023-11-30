@@ -19,9 +19,9 @@
 #include "sw/device/silicon_creator/lib/drivers/retention_sram.h"
 #include "sw/device/silicon_creator/lib/drivers/rnd.h"
 #include "sw/device/silicon_creator/lib/drivers/rstmgr.h"
+#include "sw/device/silicon_creator/lib/drivers/spi_host.h"
 #include "sw/device/silicon_creator/lib/drivers/uart.h"
 #include "sw/device/silicon_creator/lib/drivers/watchdog.h"
-#include "sw/device/silicon_creator/rom/boot_policy.h"
 #include "sw/device/silicon_creator/rom/bootstrap.h"
 #include "sw/device/silicon_creator/rom/second_rom_epmp.h"
 #include "sw/device/silicon_creator/rom/sigverify_keys_rsa.h"
@@ -39,9 +39,11 @@
 #include "sw/lib/sw/device/silicon_creator/cfi.h"
 #include "sw/lib/sw/device/silicon_creator/epmp_state.h"
 #include "sw/lib/sw/device/silicon_creator/error.h"
+#include "sw/lib/sw/device/silicon_creator/ext_flash.h"
 #include "sw/lib/sw/device/silicon_creator/rom_print.h"
 #include "sw/lib/sw/device/silicon_creator/shutdown.h"
 #include "sw/lib/sw/device/silicon_creator/sigverify/sigverify.h"
+#include "sw/lib/sw/device/silicon_creator/spi_nor_flash.h"
 
 #include "hw/top_darjeeling/sw/autogen/top_darjeeling.h"
 #include "otp_ctrl_regs.h"
@@ -185,98 +187,59 @@ static rom_error_t rom_init(void) {
  * `opentitan/sw/device/silicon_creator/rom/second_rom.ld`, and describes the
  * location of the flash header.
  */
+extern char _rom_ext_load_start[];
 extern char _rom_ext_virtual_start[];
 extern char _rom_ext_virtual_size[];
 
 /**
- * Performs consistency checks before booting a ROM_EXT.
- *
- * All of the checks in this function are expected to pass and any failures
- * result in shutdown.
- */
-static void rom_pre_boot_check(void) {
-  CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomPreBootCheck, 1);
-
-  // Check the alert_handler configuration.
-  SHUTDOWN_IF_ERROR(alert_config_check(lc_state));
-  CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomPreBootCheck, 2);
-
-  // Check cached life cycle state against the value reported by hardware.
-  lifecycle_state_t lc_state_check = lifecycle_state_get();
-  if (launder32(lc_state_check) != lc_state) {
-    HARDENED_TRAP();
-  }
-  HARDENED_CHECK_EQ(lc_state_check, lc_state);
-  CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomPreBootCheck, 3);
-
-  CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomPreBootCheck, 4);
-
-  // Check the ePMP state
-  SHUTDOWN_IF_ERROR(epmp_state_check());
-  CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomPreBootCheck, 5);
-
-  // Check the cpuctrl CSR.
-  uint32_t cpuctrl_csr;
-  uint32_t cpuctrl_otp =
-      otp_read32(OTP_CTRL_PARAM_CREATOR_SW_CFG_CPUCTRL_OFFSET);
-  CSR_READ(CSR_REG_CPUCTRL, &cpuctrl_csr);
-  // We only mask the 8th bit (`ic_scr_key_valid`) to include exception flags
-  // (bits 6 and 7) in the check.
-  cpuctrl_csr = bitfield_bit32_write(cpuctrl_csr, 8, false);
-  if (launder32(cpuctrl_csr) != cpuctrl_otp) {
-    HARDENED_TRAP();
-  }
-  HARDENED_CHECK_EQ(cpuctrl_csr, cpuctrl_otp);
-  // Check rstmgr alert and cpu info collection configuration.
-  SHUTDOWN_IF_ERROR(
-      rstmgr_info_en_check(retention_sram_get()->creator.reset_reasons));
-  CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomPreBootCheck, 6);
-
-  sec_mmio_check_counters(/*expected_check_count=*/2);
-  CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomPreBootCheck, 7);
-}
-
-/**
- * Attempts to boot ROM_EXT.
+ * Attempts to boot ROM_EXTs in the order given by the boot policy module.
  *
  * @return Result of the last attempt.
  */
 OT_WARN_UNUSED_RESULT
 static rom_error_t rom_try_boot(void) {
   CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomTryBoot, 1);
-  CFI_FUNC_COUNTER_PREPCALL(rom_counters, kCfiRomTryBoot, 2,
-                            kCfiRomPreBootCheck);
-  rom_pre_boot_check();
-  CFI_FUNC_COUNTER_INCREMENT(rom_counters, kCfiRomTryBoot, 4);
-  CFI_FUNC_COUNTER_CHECK(rom_counters, kCfiRomPreBootCheck, 8);
 
-  // TODO: Do not hardcode that.
-  uintptr_t rom_ext_lma = 0x41080000;
+  const int kSpiCsid = 0; // Flash is at chip select 0
 
-  // TODO: Load ROM extension from flash, through SPI host,
-  //       at rom_ext_lma (shared SRAM).
+  // Initialize SPI_HOST controller
+  spi_host_init(kSpiHostDivValue);
 
-  // TODO: Verify ROM extension.
+  // Initialize SPI Flash memory
+  uint32_t jedec_id;
+  HARDENED_RETURN_IF_ERROR(spi_nor_flash_init(kSpiCsid, &jedec_id));
+  OT_DISCARD(rom_printf("Detected Flash, JEDEC ID is %x\r\n", jedec_id));
 
-  // TODO: Remap the ROM ext virtual region to shared SRAM.
-  // Use a reserved remapper, that must not be used by ROM patches.
-  // HARDENED_RETURN_IF_ERROR(
-  //    ibex_addr_remap_set(1, (uintptr_t)_rom_ext_virtual_start, rom_ext_lma,
-  //                        (size_t)_rom_ext_virtual_size));
+  // Find partition for OTRE bundle
+  part_desc_t part = {0};
+  HARDENED_RETURN_IF_ERROR(
+      ext_flash_lookup_partition(kSpiCsid, PARTITION_ROM_EXT_IDENTIFIER, kPartTypeBundle, &part));
+
+  // Find Asset for OTRE firmware
+  asset_manifest_t asset = {0};
+  HARDENED_RETURN_IF_ERROR(
+      ext_flash_lookup_asset(kSpiCsid, &part, ASSET_ROM_EXT_IDENTIFIER, kAssetTypeFirmware, &asset));
+
+  // Load and verify firmware
+  firmware_desc_t fw = {0};
+  HARDENED_RETURN_IF_ERROR(
+      ext_flash_load_firmware(kSpiCsid, &asset, (uintptr_t)_rom_ext_load_start, (uintptr_t)_rom_ext_virtual_start, (uintptr_t)_rom_ext_virtual_size, &fw));
+
+  // Remap the ROM ext virtual region to shared SRAM.
+  // TODO: Use a reserved remapper, that must not be used by ROM patches.
+  HARDENED_RETURN_IF_ERROR(
+      ibex_addr_remap_set(1, (uintptr_t)_rom_ext_virtual_start, (uintptr_t)_rom_ext_load_start,
+                          (size_t)_rom_ext_virtual_size));
+
   HARDENED_RETURN_IF_ERROR(epmp_state_check());
-
-  // TODO: Do not hardcode the start and end offset for the ePMP region.
   second_rom_epmp_unlock_rom_ext(
-      (epmp_region_t){.start = (uintptr_t)_rom_ext_virtual_start + 0x400,
-                      .end = (uintptr_t)_rom_ext_virtual_start + 0x177c},
-      (epmp_region_t){.start = rom_ext_lma,
-                      .end = rom_ext_lma + (uintptr_t)_rom_ext_virtual_size});
-
-  // TODO: Entry point should come from the manifest.
-  uintptr_t entry_point = (uintptr_t)_rom_ext_virtual_start + 0x480;
+      (epmp_region_t){.start = fw.code_start,
+                      .end = fw.code_end},
+      (epmp_region_t){.start = (uintptr_t)_rom_ext_load_start,
+                      .end = (uintptr_t)_rom_ext_load_start + (uintptr_t)_rom_ext_virtual_size});
   OT_DISCARD(rom_printf("Jumping to ROM_EXT entry point at 0x%x\r\n",
-                        (unsigned)entry_point));
-  ((rom_ext_entry_point *)entry_point)();
+                        (unsigned)fw.entry_point));
+  ((rom_ext_entry_point *)fw.entry_point)();
 
   return kErrorRomBootFailed;
 }
