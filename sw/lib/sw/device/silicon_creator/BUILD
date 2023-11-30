@@ -145,6 +145,8 @@ exports_files([
     "chip_info.h",
     "crc32_functest.c",
     "crc32_perftest.c",
+    "ext_flash.c",
+    "ext_flash.h",
     "irq_asm_functest.c",
     "manifest.c",
     "manifest.h",

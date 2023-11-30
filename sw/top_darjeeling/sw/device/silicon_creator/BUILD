@@ -338,3 +338,18 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "ext_flash",
+    srcs = ["//sw/lib/sw/device/silicon_creator:ext_flash.c"],
+    hdrs = ["//sw/lib/sw/device/silicon_creator:ext_flash.h"],
+    deps = [
+        ":spi_nor_flash",
+        "//sw/device/silicon_creator/lib/drivers:hmac",
+        "//sw/lib/sw/device/base:hardened_memory",
+        "//sw/lib/sw/device/silicon_creator:error",
+        "//sw/lib/sw/device/silicon_creator:keymgr_binding",
+        "//sw/lib/sw/device/silicon_creator/sigverify:rsa_key",
+        "//sw/lib/sw/device/silicon_creator/sigverify:usage_constraints",
+    ],
+)

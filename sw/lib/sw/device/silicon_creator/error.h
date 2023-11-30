@@ -31,6 +31,7 @@ enum module_ {
   kModuleSigverify =    MODULE_CODE('S', 'V'),
   kModuleKeymgr =       MODULE_CODE('K', 'M'),
   kModuleManifest =     MODULE_CODE('M', 'A'),
+  kModuleExtFlash =     MODULE_CODE('E', 'F'),
   kModuleRom =          MODULE_CODE('M', 'R'),
   kModuleInterrupt =    MODULE_CODE('I', 'R'),
   kModuleEpmp =         MODULE_CODE('E', 'P'),
@@ -91,6 +92,15 @@ enum module_ {
   X(kErrorManifestBadSignedRegion,    ERROR_(3, kModuleManifest, kInternal)), \
   X(kErrorManifestBadExtension,       ERROR_(4, kModuleManifest, kInternal)), \
   X(kErrorManifestBadVersionMajor,    ERROR_(5, kModuleManifest, kInternal)), \
+  \
+  X(kErrorExtFlashInvalidPartTable,   ERROR_(1, kModuleExtFlash, kInternal)), \
+  X(kErrorExtFlashInvalidBundle,      ERROR_(2, kModuleExtFlash, kInternal)), \
+  X(kErrorExtFlashPartitionNotFound,  ERROR_(3, kModuleExtFlash, kInternal)), \
+  X(kErrorExtFlashAssetNotFound,      ERROR_(4, kModuleExtFlash, kInternal)), \
+  X(kErrorExtFlashInvalidAsset,       ERROR_(5, kModuleExtFlash, kInternal)), \
+  X(kErrorExtFlashBadAssetEntryPoint, ERROR_(6, kModuleManifest, kInternal)), \
+  X(kErrorExtFlashBadAssetCodeRegion, ERROR_(7, kModuleManifest, kInternal)), \
+  X(kErrorExtFlashBadAssetDigest,     ERROR_(8, kModuleManifest, kInternal)), \
   \
   X(kErrorAlertBadIndex,              ERROR_(1, kModuleAlertHandler, kInvalidArgument)), \
   X(kErrorAlertBadClass,              ERROR_(2, kModuleAlertHandler, kInvalidArgument)), \
