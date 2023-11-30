@@ -33,34 +33,44 @@ extern "C" {
  * initialized) with the in-memory copy of the state used to double check the
  * configuration as required.
  */
-// TODO(lowrisc/opentitan#8800): Implement ePMP initialization for ROM_EXT
-// stage.
 
 /**
- * Unlocks the provided first Silicon Owner stage region with read-execute
- * permissions.
+ * Initialise the ePMP in-memory copy of the register state to reflect the
+ * hardware configuration expected at entry to the ROM C code.
  *
- * The provided ePMP state is also updated to reflect the changes made to the
- * hardware configuration.
- *
- * @param state The ePMP state to update.
- * @param image Region for executable sections in the silicon Owner image.
+ * The actual hardware configuration is performed separately, either by reset
+ * logic or in assembly. This code must be kept in sync with any changes
+ * to the hardware configuration.
  */
-void rom_ext_epmp_unlock_owner_stage_rx(epmp_region_t image);
+void rom_ext_epmp_state_init(void);
 
 /**
- * Unlocks the provided first silicon owner region with read-only permissions.
+ * Unlocks the provided Silicon Owner image regions.
+ *
+ * Silicon Owner image is loaded into owner_stage_lma region (i.e. CTN RAM) and
+ * it is expected that a remap has been configured from there to
+ * owner_stage_virtual region.
+ *
+ * This function will configure the following PMP rules:
+ * - owner_stage_text region: read-execute
+ * - owner_stage_virtual region: read-only
+ * - owner_stage_lma region: read-only
+ * It will also ensure that owner_stage_text region is contained into
+ * owner_stage_virtual region.
  *
  * The provided ePMP state is also updated to reflect the changes made to the
  * hardware configuration.
- * The image size must be a power of 2 as this function uses NAPOT
+ * The physical region size must be power of 2 as this function uses NAPOT
  * (Naturally-Aligned-Power-Of-Two) addressing mode.
  *
- * @param state The ePMP state to update.
- * @param region Region in the silicon Owner image to receive read-only
- * permission.
+ * @param owner_stage_text Region in the Silicon Owner image to receive
+ *                         read-execute permission (VMA).
+ * @param owner_stage_lma Region in the Silicon Owner image to receive
+ *                        read-only permission (LMA).
  */
-void rom_ext_epmp_unlock_owner_stage_r(epmp_region_t region);
+void rom_ext_epmp_unlock_owner_stage(epmp_region_t owner_text,
+                                     epmp_region_t owner_stage_lma);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

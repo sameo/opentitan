@@ -9,46 +9,59 @@
 
 #include "hw/top_darjeeling/sw/autogen/top_darjeeling.h"
 
-void rom_ext_epmp_unlock_owner_stage_rx(epmp_region_t region) {
-  const int kEntry = 8;
-  epmp_state_configure_tor(kEntry, region, kEpmpPermLockedReadExecute);
+// Symbols defined in linker script.
+extern char _owner_stage_virtual_start[];  // Start of Silicon Owner image (VMA)
+extern char _owner_stage_virtual_size[];   // Size of Silicon Owner image (VMA)
 
+void rom_ext_epmp_state_init(void) {
   // Update the hardware configuration (CSRs).
   //
-  // Entry is hardcoded as 8. Make sure to modify hardcoded values if changing
-  // kEntry.
-  //
-  // The `pmp1cfg` configuration is the second field in `pmpcfg0`.
-  //
-  //            32          24          16           8           0
-  //             +-----------+-----------+-----------+-----------+
-  // `pmpcfg2` = | `pmp11cfg | `pmp10cfg`| `pmp9cfg` | `pmp8cfg` |
-  //             +-----------+-----------+-----------+-----------+
-  CSR_WRITE(CSR_REG_PMPADDR7, ((uint32_t)region.start) >> 2);
-  CSR_WRITE(CSR_REG_PMPADDR8, ((uint32_t)region.end) >> 2);
-  CSR_CLEAR_BITS(CSR_REG_PMPCFG2, 0xff);
-  CSR_SET_BITS(CSR_REG_PMPCFG2, (kEpmpModeTor | kEpmpPermLockedReadExecute));
+  //            32           24             16             8             0
+  //             +-------------+-------------+-------------+-------------+
+  // `pmpcfg1` = | `pmp7cfg` | `pmp6cfg` | `pmp5cfg` | `pmp4cfg` |
+  //             +-------------+-------------+-------------+-------------+
+  CSR_CLEAR_BITS(CSR_REG_PMPCFG1, 0xffffffff);
+  CSR_WRITE(CSR_REG_PMPADDR4, 0);
+  CSR_WRITE(CSR_REG_PMPADDR5, 0);
+  CSR_WRITE(CSR_REG_PMPADDR6, 0);
+  CSR_WRITE(CSR_REG_PMPADDR7, 0);
+  // Update in-memory copy of ePMP register state
+  epmp_state_unconfigure(4);
+  epmp_state_unconfigure(5);
+  epmp_state_unconfigure(6);
+  epmp_state_unconfigure(7);
 }
 
-void rom_ext_epmp_unlock_owner_stage_r(epmp_region_t region) {
-  const int kEntry = 9;
-  epmp_state_configure_napot(kEntry, region, kEpmpPermLockedReadOnly);
-
+void rom_ext_epmp_unlock_owner_stage(epmp_region_t owner_stage_text,
+                                     epmp_region_t owner_stage_lma) {
+  const epmp_region_t owner_stage_vma = {
+      .start = (uintptr_t)_owner_stage_virtual_start,
+      .end = (uintptr_t)_owner_stage_virtual_start +
+             (uintptr_t)_owner_stage_virtual_size};
+  // Make sure owner_stage_text is a subset of owner_stage_vma
+  HARDENED_CHECK_GE(owner_stage_text.start, owner_stage_vma.start);
+  HARDENED_CHECK_LE(owner_stage_text.end, owner_stage_vma.end);
   // Update the hardware configuration (CSRs).
-  //
-  // Entry is hardcoded as 9. Make sure to modify hardcoded values if changing
-  // kEntry.
-  //
-  // The `pmp6cfg` configuration is the second field in `pmpcfg1`.
   //
   //            32          24          16           8           0
   //             +-----------+-----------+-----------+-----------+
-  // `pmpcfg2` = | `pmp11cfg`| `pmp10cfg`| `pmp9cfg` | `pmp8cfg` |
+  // `pmpcfg1` = | `pmp7cfg` | `pmp6cfg` | `pmp5cfg` | `pmp4cfg` |
   //             +-----------+-----------+-----------+-----------+
-  CSR_WRITE(CSR_REG_PMPADDR9,
-            (uint32_t)region.start >> 2 |
-                ((uint32_t)region.end - (uint32_t)region.start - 1) >> 3);
-  CSR_CLEAR_BITS(CSR_REG_PMPCFG2, 0xff << 8);
-  CSR_SET_BITS(CSR_REG_PMPCFG2,
-               ((kEpmpModeNapot | kEpmpPermLockedReadOnly) << 8));
+  CSR_WRITE(CSR_REG_PMPADDR4, owner_stage_text.start >> 2);
+  CSR_WRITE(CSR_REG_PMPADDR5, owner_stage_text.end >> 2);
+  CSR_WRITE(CSR_REG_PMPADDR6,
+            owner_stage_vma.start >> 2 |
+                (owner_stage_vma.end - owner_stage_vma.start - 1) >> 3);
+  CSR_WRITE(CSR_REG_PMPADDR7,
+            owner_stage_lma.start >> 2 |
+                (owner_stage_lma.end - owner_stage_lma.start - 1) >> 3);
+  CSR_CLEAR_BITS(CSR_REG_PMPCFG1, 0xffffffff);
+  CSR_SET_BITS(CSR_REG_PMPCFG1,
+               ((kEpmpModeNapot | kEpmpPermLockedReadOnly) << 24) |
+                   ((kEpmpModeNapot | kEpmpPermLockedReadOnly) << 16) |
+                   ((kEpmpModeTor | kEpmpPermLockedReadExecute) << 8));
+  // Update the in-memory copy of ePMP register state.
+  epmp_state_configure_tor(5, owner_stage_text, kEpmpPermLockedReadExecute);
+  epmp_state_configure_napot(6, owner_stage_vma, kEpmpPermLockedReadOnly);
+  epmp_state_configure_napot(7, owner_stage_lma, kEpmpPermLockedReadOnly);
 }

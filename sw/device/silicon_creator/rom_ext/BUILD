@@ -144,7 +144,6 @@ cc_library(
     hdrs = ["rom_ext.h"],
     target_compatible_with = [OPENTITAN_CPU],
     deps = [
-        ":rom_ext_boot_policy",
         ":rom_ext_epmp",
         ":sigverify_keys",
         "//sw/device/silicon_creator/lib/drivers:flash_ctrl",
@@ -153,6 +152,7 @@ cc_library(
         "//sw/device/silicon_creator/lib/drivers:lifecycle",
         "//sw/device/silicon_creator/lib/drivers:otp",
         "//sw/device/silicon_creator/lib/drivers:pinmux",
+        "//sw/device/silicon_creator/lib/drivers:spi_host",
         "//sw/device/silicon_creator/lib/drivers:uart",
         "//sw/device/silicon_creator/rom_ext/keys/fake",
         "//sw/lib/sw/device/arch:device",
@@ -165,9 +165,9 @@ cc_library(
         "//sw/lib/sw/device/silicon_creator/base:sec_mmio",
         "//sw/lib/sw/device/silicon_creator/base:static_critical",
         "//sw/lib/sw/device/silicon_creator/sigverify",
-        "//sw/top_darjeeling/sw/device/silicon_creator:manifest",
-        "//sw/top_darjeeling/sw/device/silicon_creator:manifest_def",
+        "//sw/top_darjeeling/sw/device/silicon_creator:ext_flash",
         "//sw/top_darjeeling/sw/device/silicon_creator:shutdown",
+        "//sw/top_darjeeling/sw/device/silicon_creator:spi_nor_flash",
     ],
 )
 

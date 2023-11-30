@@ -19,8 +19,9 @@ __DYNAMIC = 0;
 /**
  * Symbols to be used in the setup of the address translation for ROM_EXT.
  */
-_owner_virtual_start_address = ORIGIN(owner_virtual);
-_owner_virtual_size = LENGTH(owner_virtual);
+_owner_stage_load_start = ORIGIN(ram_ctn);
+_owner_stage_virtual_start = ORIGIN(owner_virtual);
+_owner_stage_virtual_size = LENGTH(owner_virtual);
 
 /**
  * Marking the entry point correctly for the ELF file. The signer tool will

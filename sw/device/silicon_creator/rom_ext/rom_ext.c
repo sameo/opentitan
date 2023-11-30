@@ -10,8 +10,8 @@
 #include "sw/device/silicon_creator/lib/drivers/lifecycle.h"
 #include "sw/device/silicon_creator/lib/drivers/otp.h"
 #include "sw/device/silicon_creator/lib/drivers/pinmux.h"
+#include "sw/device/silicon_creator/lib/drivers/spi_host.h"
 #include "sw/device/silicon_creator/lib/drivers/uart.h"
-#include "sw/device/silicon_creator/rom_ext/rom_ext_boot_policy.h"
 #include "sw/device/silicon_creator/rom_ext/rom_ext_epmp.h"
 #include "sw/device/silicon_creator/rom_ext/sigverify_keys.h"
 #include "sw/lib/sw/device/arch/device.h"
@@ -22,13 +22,21 @@
 #include "sw/lib/sw/device/silicon_creator/base/chip.h"
 #include "sw/lib/sw/device/silicon_creator/base/sec_mmio.h"
 #include "sw/lib/sw/device/silicon_creator/epmp_state.h"
-#include "sw/lib/sw/device/silicon_creator/manifest.h"
-#include "sw/lib/sw/device/silicon_creator/manifest_def.h"
+#include "sw/lib/sw/device/silicon_creator/ext_flash.h"
 #include "sw/lib/sw/device/silicon_creator/rom_print.h"
 #include "sw/lib/sw/device/silicon_creator/shutdown.h"
 #include "sw/lib/sw/device/silicon_creator/sigverify/sigverify.h"
+#include "sw/lib/sw/device/silicon_creator/spi_nor_flash.h"
 
 #include "hw/top_darjeeling/sw/autogen/top_darjeeling.h"  // Generated.
+
+/**
+ * Type alias for the first owner boot stage entry point.
+ *
+ * The entry point address obtained from the first owner boot stage manifest
+ * must be cast to a pointer to this type before being called.
+ */
+typedef void owner_stage_entry_point(void);
 
 // Life cycle state of the chip.
 lifecycle_state_t lc_state = kLcStateProd;
@@ -51,141 +59,80 @@ static rom_error_t rom_ext_irq_error(void) {
   return kErrorInterrupt + mcause;
 }
 
-void rom_ext_init(void) {
+OT_WARN_UNUSED_RESULT
+static rom_error_t rom_ext_init(void) {
   sec_mmio_next_stage_init();
-
-  lc_state = lifecycle_state_get();
-
-  // TODO: Verify ePMP expectations from ROM.
 
   pinmux_init();
   // Configure UART0 as stdout.
   uart_init(kUartNCOValue);
-}
 
-OT_WARN_UNUSED_RESULT
-static rom_error_t rom_ext_verify(const manifest_t *manifest) {
-  RETURN_IF_ERROR(rom_ext_boot_policy_manifest_check(manifest));
-  const sigverify_rsa_key_t *key;
-  RETURN_IF_ERROR(sigverify_rsa_key_get(
-      sigverify_rsa_key_id_get(&manifest->rsa_modulus), lc_state, &key));
+  lc_state = lifecycle_state_get();
 
-  hmac_sha256_init();
-  // Hash usage constraints.
-  manifest_usage_constraints_t usage_constraints_from_hw;
-  sigverify_usage_constraints_get(manifest->usage_constraints.selector_bits,
-                                  &usage_constraints_from_hw);
-  hmac_sha256_update(&usage_constraints_from_hw,
-                     sizeof(usage_constraints_from_hw));
-  // Hash the remaining part of the image.
-  manifest_digest_region_t digest_region = manifest_digest_region_get(manifest);
-  hmac_sha256_update(digest_region.start, digest_region.length);
-  // Verify signature
-  hmac_digest_t act_digest;
-  hmac_sha256_final(&act_digest);
-  uint32_t flash_exec = 0;
-  return sigverify_rsa_verify(&manifest->rsa_signature, key, &act_digest,
-                              lc_state, &flash_exec);
+  HARDENED_RETURN_IF_ERROR(epmp_state_check());
+  rom_ext_epmp_state_init();
+
+  return kErrorOk;
 }
 
 /* These symbols are defined in
  * `opentitan/sw/device/silicon_creator/rom_ext/rom_ext.ld`, and describe the
  * location of the flash header.
  */
-extern char _owner_virtual_start_address[];
-extern char _owner_virtual_size[];
-/**
- * Compute the virtual address corresponding to the physical address `lma_addr`.
- *
- * @param manifest Pointer to the current manifest.
- * @param lma_addr Load address or physical address.
- * @return the computed virtual address.
- */
-OT_WARN_UNUSED_RESULT
-static uintptr_t owner_vma_get(const manifest_t *manifest, uintptr_t lma_addr) {
-  return (lma_addr - (uintptr_t)manifest +
-          (uintptr_t)_owner_virtual_start_address + CHIP_ROM_EXT_SIZE_MAX);
-}
-
-OT_WARN_UNUSED_RESULT
-static rom_error_t rom_ext_boot(const manifest_t *manifest) {
-  // Disable access to silicon creator info pages and OTP partitions until next
-  // reset.
-  flash_ctrl_creator_info_pages_lockdown();
-  otp_creator_sw_cfg_lockdown();
-  SEC_MMIO_WRITE_INCREMENT(kFlashCtrlSecMmioCreatorInfoPagesLockdown +
-                           kOtpSecMmioCreatorSwCfgLockDown);
-
-  // Configure address translation, compute the epmp regions and the entry
-  // point for the virtual address in case the address translation is enabled.
-  // Otherwise, compute the epmp regions and the entry point for the load
-  // address.
-  epmp_region_t text_region = manifest_code_region_get(manifest);
-  uintptr_t entry_point = manifest_entry_point_get(manifest);
-  switch (launder32(manifest->address_translation)) {
-    case kHardenedBoolTrue:
-      HARDENED_CHECK_EQ(manifest->address_translation, kHardenedBoolTrue);
-      HARDENED_RETURN_IF_ERROR(
-          ibex_addr_remap_set(1, (uintptr_t)_owner_virtual_start_address,
-                              (uintptr_t)TOP_DARJEELING_RAM_CTN_BASE_ADDR,
-                              (size_t)_owner_virtual_size));
-      SEC_MMIO_WRITE_INCREMENT(kAddressTranslationSecMmioConfigure);
-
-      // Unlock read-only for the whole rom_ext virtual memory.
-      HARDENED_RETURN_IF_ERROR(epmp_state_check());
-      rom_ext_epmp_unlock_owner_stage_r(
-          (epmp_region_t){.start = (uintptr_t)_owner_virtual_start_address,
-                          .end = (uintptr_t)_owner_virtual_start_address +
-                                 (uintptr_t)_owner_virtual_size});
-      HARDENED_RETURN_IF_ERROR(epmp_state_check());
-
-      // Move the ROM_EXT execution section from the load address to the virtual
-      // address.
-      // TODO(#13513): Harden these calculations.
-      text_region.start = owner_vma_get(manifest, text_region.start);
-      text_region.end = owner_vma_get(manifest, text_region.end);
-      entry_point = owner_vma_get(manifest, entry_point);
-      break;
-    case kHardenedBoolFalse:
-      HARDENED_CHECK_EQ(manifest->address_translation, kHardenedBoolFalse);
-      break;
-    default:
-      HARDENED_TRAP();
-  }
-
-  // Unlock execution of owner stage executable code (text) sections.
-  HARDENED_RETURN_IF_ERROR(epmp_state_check());
-  rom_ext_epmp_unlock_owner_stage_rx(text_region);
-  HARDENED_RETURN_IF_ERROR(epmp_state_check());
-
-  // Jump to OWNER entry point.
-  OT_DISCARD(rom_printf("entry: 0x%x\r\n", (unsigned int)entry_point));
-  ((owner_stage_entry_point *)entry_point)();
-
-  return kErrorRomBootFailed;
-}
+extern char _owner_stage_load_start[];
+extern char _owner_stage_virtual_start[];
+extern char _owner_stage_virtual_size[];
 
 OT_WARN_UNUSED_RESULT
 static rom_error_t rom_ext_try_boot(void) {
-  rom_ext_boot_policy_manifests_t manifests =
-      rom_ext_boot_policy_manifests_get();
-  rom_error_t error = kErrorRomBootFailed;
-  for (size_t i = 0; i < ARRAYSIZE(manifests.ordered); ++i) {
-    error = rom_ext_verify(manifests.ordered[i]);
-    if (error != kErrorOk) {
-      continue;
-    }
-    // Boot fails if a verified ROM_EXT cannot be booted.
-    RETURN_IF_ERROR(rom_ext_boot(manifests.ordered[i]));
-    // `rom_ext_boot()` should never return `kErrorOk`, but if it does
-    // we must shut down the chip instead of trying the next ROM_EXT.
-    return kErrorRomBootFailed;
-  }
-  return error;
+  const int kSpiCsid = 0; // Flash is at chip select 0
+
+  // Initialize SPI_HOST controller
+  spi_host_init(kSpiHostDivValue);
+
+  // Initialize SPI Flash memory
+  uint32_t jedec_id;
+  HARDENED_RETURN_IF_ERROR(spi_nor_flash_init(kSpiCsid, &jedec_id));
+  OT_DISCARD(rom_printf("Detected Flash, JEDEC ID is %x\r\n", jedec_id));
+
+  // Find partition for OTPF bundle
+  part_desc_t part = {0};
+  HARDENED_RETURN_IF_ERROR(
+      ext_flash_lookup_partition(kSpiCsid, PARTITION_PLATFORM_FIRMWARES_IDENTIFIER, kPartTypeBundle, &part));
+
+  // Find Asset for OTB0 firmware
+  asset_manifest_t asset = {0};
+  HARDENED_RETURN_IF_ERROR(
+      ext_flash_lookup_asset(kSpiCsid, &part, ASSET_BL0_IDENTIFIER, kAssetTypeFirmware, &asset));
+
+  // Load and verify firmware
+  firmware_desc_t fw = {0};
+  HARDENED_RETURN_IF_ERROR(
+      ext_flash_load_firmware(kSpiCsid, &asset, (uintptr_t)_owner_stage_load_start, (uintptr_t)_owner_stage_virtual_start, (uintptr_t)_owner_stage_virtual_size, &fw));
+
+  // Remap the ROM ext virtual region to shared SRAM.
+  // TODO: Use a reserved remapper, that must not be used by ROM patches.
+  HARDENED_RETURN_IF_ERROR(
+      ibex_addr_remap_set(0, (uintptr_t)_owner_stage_virtual_start, (uintptr_t)_owner_stage_load_start,
+                          (size_t)_owner_stage_virtual_size));
+
+  HARDENED_RETURN_IF_ERROR(epmp_state_check());
+  rom_ext_epmp_unlock_owner_stage(
+      (epmp_region_t){.start = fw.code_start,
+                      .end = fw.code_end},
+      (epmp_region_t){.start = (uintptr_t)_owner_stage_load_start,
+                      .end = (uintptr_t)_owner_stage_load_start + (uintptr_t)_owner_stage_virtual_size});
+  OT_DISCARD(rom_printf("Jumping to BL0 entry point at 0x%x\r\n",
+                        (unsigned)fw.entry_point));
+  ((owner_stage_entry_point *)fw.entry_point)();
+
+  // `rom_ext_boot()` should never return `kErrorOk`, but if it does
+  // we must shut down the chip instead of trying the next ROM_EXT.
+  return kErrorRomBootFailed;
 }
 
 void rom_ext_main(void) {
-  rom_ext_init();
+  SHUTDOWN_IF_ERROR(rom_ext_init());
   OT_DISCARD(rom_printf("Starting ROM_EXT\r\n"));
   shutdown_finalize(rom_ext_try_boot());
 }
