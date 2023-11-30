@@ -417,6 +417,9 @@ SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_software_escalate(void)) {
 }
 
 SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_keymgr_kill(void)) {
+#ifdef TOP_DARJEELING_KEYMGR_BASE_ADDR
+  // FIXME: implement this for Darjeeling KeyMgr DPE
+#else
   uint32_t reg =
       bitfield_field32_write(0, KEYMGR_CONTROL_SHADOWED_DEST_SEL_FIELD,
                              KEYMGR_CONTROL_SHADOWED_DEST_SEL_VALUE_NONE);
@@ -427,6 +430,7 @@ SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_keymgr_kill(void)) {
 
   abs_mmio_write32(kKeymgrBaseAddr[0] + KEYMGR_START_REG_OFFSET, 1);
   abs_mmio_write32(kKeymgrBaseAddr[0] + KEYMGR_SIDELOAD_CLEAR_REG_OFFSET, 1);
+#endif
 }
 
 SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_reset(void)) {
@@ -435,8 +439,12 @@ SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_reset(void)) {
 }
 
 SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_flash_kill(void)) {
+#ifdef TOP_EARLGREY_FLASH_CTRL_CORE_BASE_ADDR
   // Setting DIS (rw0c) to a value other than 5 will disable flash permanently.
   abs_mmio_write32(kFlashCtrlCoreBaseAddr[0] + FLASH_CTRL_DIS_REG_OFFSET, 0);
+#else
+  // FIXME: nothing to be done for Darjeeling?
+#endif
 }
 
 SHUTDOWN_FUNC(noreturn, shutdown_hang(void)) {
