@@ -120,7 +120,7 @@ rom_error_t sigverify_rsa_verify(const sigverify_rsa_buffer_t *signature,
  * `selector_bits`.
  */
 void sigverify_usage_constraints_get(
-    uint32_t selector_bits, manifest_usage_constraints_t *usage_constraints);
+    uint32_t selector_bits, usage_constraints_t *usage_constraints);
 
 ```
 

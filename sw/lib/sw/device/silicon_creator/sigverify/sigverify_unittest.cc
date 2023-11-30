@@ -308,7 +308,7 @@ TEST_P(SigverifyUsageConstraints, Read) {
   EXPECT_CALL(lifecycle_, State())
       .WillOnce(Return(static_cast<lifecycle_state_t>(kLifeCycleState)));
 
-  manifest_usage_constraints_t usage_constraints;
+  usage_constraints_t usage_constraints;
   sigverify_usage_constraints_get(GetParam().selector_bits, &usage_constraints);
 
   EXPECT_EQ(usage_constraints.selector_bits, GetParam().selector_bits);

@@ -78,6 +78,7 @@ cc_library(
         "//sw/lib/sw/device/silicon_creator/base:chip",
         "//sw/lib/sw/device/silicon_creator/sigverify:rsa_key",
         "//sw/lib/sw/device/silicon_creator/sigverify:spx_key",
+        "//sw/lib/sw/device/silicon_creator/sigverify:usage_constraints",
     ],
 )
 

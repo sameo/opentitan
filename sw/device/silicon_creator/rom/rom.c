@@ -250,7 +250,7 @@ static rom_error_t rom_verify(const manifest_t *manifest,
                     boot_data.min_security_version_rom_ext);
 
   // Hash usage constraints.
-  manifest_usage_constraints_t usage_constraints_from_hw;
+  usage_constraints_t usage_constraints_from_hw;
   sigverify_usage_constraints_get(manifest->usage_constraints.selector_bits,
                                   &usage_constraints_from_hw);
   hmac_sha256_update(&usage_constraints_from_hw,
