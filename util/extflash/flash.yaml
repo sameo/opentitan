@@ -1,0 +1,22 @@
+#
+# Flash Configuration
+#
+global:
+    flash_size: 16777216 # 16MB
+    block_align: 0x10000 # 64KB blocks
+
+#
+# Partitions
+#
+partitions:
+    'ROM Extension':
+        offset: 0x10000
+        size: 0x10000 # 1 block
+        ident: OTRE
+        type: bundle
+
+    'Platform Firmwares':
+        offset: 0x20000
+        size: 0x400000 # 4MB
+        ident: OTPF
+        type: bundle
