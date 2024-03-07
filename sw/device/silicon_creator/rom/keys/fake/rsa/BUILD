@@ -19,6 +19,7 @@ cc_library(
     deps = [
         "//hw/ip/otp_ctrl/data:otp_ctrl_regs",
         "//sw/device/silicon_creator/rom:sigverify_keys",
+        "//sw/device/silicon_creator/rom:sigverify_key_types",
         "//sw/lib/sw/device/base:macros",
     ],
 )
