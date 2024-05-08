@@ -104,6 +104,7 @@ cc_library(
         "//sw/lib/sw/device/base:hardened_memory",
         "//sw/lib/sw/device/base:macros",
         "//sw/lib/sw/device/base:multibits",
+        "//sw/lib/sw/device/silicon_creator:otbn_boot_services",
         "//sw/lib/sw/device/silicon_creator:rom_print",
         "//sw/lib/sw/device/silicon_creator/sigverify",
     ],
@@ -135,6 +136,27 @@ dual_cc_library(
             "//sw/lib/sw/device/base:macros",
         ],
     ),
+)
+
+cc_library(
+    name = "attestation",
+    hdrs = ["attestation.h"],
+)
+
+cc_library(
+    name = "otbn_boot_services",
+    srcs = ["otbn_boot_services.c"],
+    hdrs = ["otbn_boot_services.h"],
+    # This target uses OTBN pointers internally, so it cannot work host-side.
+    target_compatible_with = [OPENTITAN_CPU],
+    deps = [
+        ":attestation",
+        "//sw/lib/sw/device/base:macros",
+        "//sw/device/silicon_creator/lib/drivers:hmac",
+        "//sw/device/silicon_creator/lib/drivers:otbn",
+        "//sw/otbn/crypto:boot",
+        "//sw/lib/sw/device/silicon_creator:rom_print",
+    ],
 )
 
 exports_files([
