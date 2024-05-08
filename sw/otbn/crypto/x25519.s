@@ -1,4 +1,4 @@
-/* Copyright lowRISC contributors. */
+/* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
 
@@ -38,7 +38,7 @@ X25519:
   li      x2, 2
   la      x3, modulus25519
   bn.lid  x2, 0(x3)
-  bn.wsrw 0x0, w2
+  bn.wsrw MOD, w2
 
   /* Decode scalar. From RFC 7748, section 5:
 

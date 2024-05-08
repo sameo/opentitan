@@ -1,10 +1,23 @@
-# Copyright lowRISC contributors.
+# Copyright lowRISC contributors (OpenTitan project).
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
 load("//rules:otbn.bzl", "otbn_binary", "otbn_library")
 
 package(default_visibility = ["//visibility:public"])
+
+otbn_binary(
+    name = "boot",
+    srcs = [
+        "boot.s",
+    ],
+    deps = [
+        ":p256_base",
+        ":p256_isoncurve",
+        ":p256_sign",
+        ":p256_verify",
+    ],
+)
 
 otbn_library(
     name = "ed25519",
@@ -70,9 +83,37 @@ otbn_library(
 )
 
 otbn_library(
-    name = "p256",
+    name = "p256_shared_key",
     srcs = [
-        "p256.s",
+        "p256_shared_key.s",
+    ],
+)
+
+otbn_library(
+    name = "p256_base",
+    srcs = [
+        "p256_base.s",
+    ],
+)
+
+otbn_library(
+    name = "p256_isoncurve",
+    srcs = [
+        "p256_isoncurve.s",
+    ],
+)
+
+otbn_library(
+    name = "p256_sign",
+    srcs = [
+        "p256_sign.s",
+    ],
+)
+
+otbn_library(
+    name = "p256_verify",
+    srcs = [
+        "p256_verify.s",
     ],
 )
 
@@ -82,7 +123,9 @@ otbn_binary(
         "p256_ecdh.s",
     ],
     deps = [
-        ":p256",
+        ":p256_base",
+        ":p256_isoncurve",
+        ":p256_shared_key",
     ],
 )
 
@@ -92,7 +135,10 @@ otbn_binary(
         "p256_ecdsa.s",
     ],
     deps = [
-        ":p256",
+        ":p256_base",
+        ":p256_isoncurve",
+        ":p256_sign",
+        ":p256_verify",
     ],
 )
 
@@ -104,9 +150,58 @@ otbn_library(
 )
 
 otbn_library(
+    name = "p384_a2b",
+    srcs = [
+        "p384_a2b.s",
+    ],
+)
+
+otbn_library(
+    name = "p384_isoncurve",
+    srcs = [
+        "p384_isoncurve.s",
+    ],
+)
+
+otbn_library(
     name = "p384_sign",
     srcs = [
         "p384_sign.s",
+    ],
+)
+
+otbn_library(
+    name = "p384_internal_mult",
+    srcs = [
+        "p384_internal_mult.s",
+    ],
+)
+
+otbn_library(
+    name = "p384_keygen",
+    srcs = [
+        "p384_keygen.s",
+    ],
+)
+
+otbn_library(
+    name = "p384_base_mult",
+    srcs = [
+        "p384_base_mult.s",
+    ],
+)
+
+otbn_library(
+    name = "p384_modinv",
+    srcs = [
+        "p384_modinv.s",
+    ],
+)
+
+otbn_library(
+    name = "p384_scalar_mult",
+    srcs = [
+        "p384_scalar_mult.s",
     ],
 )
 
@@ -226,7 +321,10 @@ otbn_binary(
         "p256_ecdsa_sca.s",
     ],
     deps = [
-        ":p256",
+        ":p256_base",
+        ":p256_isoncurve",
+        ":p256_sign",
+        ":p256_verify",
     ],
 )
 
@@ -236,7 +334,7 @@ otbn_binary(
         "p256_key_from_seed_sca.s",
     ],
     deps = [
-        ":p256",
+        ":p256_base",
     ],
 )
 
@@ -246,7 +344,7 @@ otbn_binary(
         "p256_mod_inv_sca.s",
     ],
     deps = [
-        ":p256",
+        ":p256_base",
     ],
 )
 
@@ -257,7 +355,77 @@ otbn_binary(
     ],
     deps = [
         ":p384_base",
+        ":p384_internal_mult",
+        ":p384_modinv",
         ":p384_sign",
+    ],
+)
+
+otbn_binary(
+    name = "p384_curve_point_valid",
+    srcs = [
+        "p384_curve_point_valid.s",
+    ],
+    deps = [
+        ":p384_base",
+        ":p384_isoncurve",
+    ],
+)
+
+otbn_binary(
+    name = "p384_ecdh",
+    srcs = [
+        "p384_ecdh.s",
+    ],
+    deps = [
+        ":p384_a2b",
+        ":p384_base",
+        ":p384_base_mult",
+        ":p384_internal_mult",
+        ":p384_keygen",
+        ":p384_scalar_mult",
+    ],
+)
+
+otbn_binary(
+    name = "p384_ecdsa_keygen",
+    srcs = [
+        "p384_ecdsa_keygen.s",
+    ],
+    deps = [
+        ":p384_base",
+        ":p384_base_mult",
+        ":p384_internal_mult",
+        ":p384_keygen",
+    ],
+)
+
+otbn_binary(
+    name = "p384_ecdsa_sign",
+    srcs = [
+        "p384_ecdsa_sign.s",
+    ],
+    deps = [
+        ":p384_base",
+        ":p384_base_mult",
+        ":p384_internal_mult",
+        ":p384_keygen",
+        ":p384_modinv",
+        ":p384_sign",
+    ],
+)
+
+otbn_binary(
+    name = "p384_ecdsa_verify",
+    srcs = [
+        "p384_ecdsa_verify.s",
+    ],
+    deps = [
+        ":p384_base",
+        ":p384_base_mult",
+        ":p384_internal_mult",
+        ":p384_modinv",
+        ":p384_verify",
     ],
 )
 

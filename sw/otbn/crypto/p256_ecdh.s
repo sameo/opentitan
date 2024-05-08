@@ -1,4 +1,4 @@
-/* Copyright lowRISC contributors. */
+/* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
 
@@ -29,6 +29,14 @@
 .equ MODE_SHARED_KEY, 0x5ec
 .equ MODE_KEYPAIR_FROM_SEED, 0x29f
 .equ MODE_SHARED_KEY_FROM_SEED, 0x74b
+
+/**
+ * Hardened boolean values.
+ *
+ * Should match the values in `hardened_asm.h`.
+ */
+.equ HARDENED_BOOL_TRUE, 0x739
+.equ HARDENED_BOOL_FALSE, 0x1d4
 
 .section .text.start
 start:
@@ -95,6 +103,10 @@ keypair_random:
  * shared key is expressed in boolean shares x0, x1 such that the key is (x0 ^
  * x1).
  *
+ * If `ok` is false, the public key is invalid and the shared key is
+ * meaningless. The value will be either HARDENED_BOOL_TRUE or
+ * HARDENED_BOOL_FALSE.
+ *
  * This routine runs in constant time.
  *
  * @param[in]       w31: all-zero
@@ -102,40 +114,23 @@ keypair_random:
  * @param[in]  dmem[k1]: Second share of secret key.
  * @param[in]   dmem[x]: Public key (Q) x-coordinate.
  * @param[in]   dmem[y]: Public key (Q) y-coordinate.
+ * @param[out] dmem[ok]: Whether the public key is valid.
  * @param[out]  dmem[x]: x0, first share of shared key.
  * @param[out]  dmem[y]: x1, second share of shared key.
  */
 shared_key:
-  /* Generate shared key d*Q.
-       dmem[x] <= (d*Q).x
-       dmem[y] <= (d*Q).y */
-  jal      x1, p256_scalar_mult
+  /* Validate the public key (ends the program on failure). */
+  jal      x1, p256_check_public_key
 
-  /* TODO: `p256_scalar_mult` and the code below briefly handle the shared key
-     in unmasked form. The best way to fixing this is likely:
-       - modify scalar_mult_int to return projective coordinates
-       - get additive arithmetic mask for x before converting it to affine
-       - multiply both shares by Z^-1 to convert to affine form
-       - run a safe arithmetic-to-boolean conversion algorithm
- */
+  /* If we got here the basic validity checks passed, so set `ok` to true. */
+  la       x2, ok
+  addi     x3, x0, HARDENED_BOOL_TRUE
+  sw       x3, 0(x2)
 
-  /* Fetch a fresh random number for blinding.
-       w2 <= URND() */
-  bn.wsrr   w2, 0x2 /* URND */
-
-  /* Store the random number as the second share.
-       dmem[y] <= w2 */
-  li        x2, 2
-  la        x4, y
-  bn.sid    x2, 0(x4)
-
-  /* Blind the x-coordinate.
-       dmem[x] <= dmem[x] ^ w2 */
-  li        x3, 3
-  la        x4, x
-  bn.lid    x3, 0(x4)
-  bn.xor    w3, w3, w2
-  bn.sid    x3, 0(x4)
+  /* Generate boolean-masked shared key (d*Q).x.
+       dmem[x] <= x0
+       dmem[y] <= x1 */
+  jal      x1, p256_shared_key
 
   ecall
 
@@ -174,11 +169,16 @@ keypair_from_seed:
  * shared key is expressed in boolean shares x0, x1 such that the key is (x0 ^
  * x1).
  *
+ * If `ok` is false, the public key is invalid and the shared key is
+ * meaningless. The value will be either HARDENED_BOOL_TRUE or
+ * HARDENED_BOOL_FALSE.
+ *
  * This routine runs in constant time.
  *
  * @param[in]       w31: all-zero
  * @param[in]   dmem[x]: Public key (Q) x-coordinate.
  * @param[in]   dmem[y]: Public key (Q) y-coordinate.
+ * @param[out] dmem[ok]: Whether the public key is valid.
  * @param[out]  dmem[x]: x0, first share of shared key.
  * @param[out]  dmem[y]: x1, second share of shared key.
  */
@@ -212,15 +212,15 @@ shared_key_from_seed:
 secret_key_from_seed:
   /* Load keymgr seeds from WSRs.
        w20,w21 <= seed0
-       w22,w23 <= seed1 */
-  bn.wsrr  w20, 0x4 /* KEY_S0_L */
-  bn.wsrr  w21, 0x5 /* KEY_S0_H */
-  bn.wsrr  w22, 0x6 /* KEY_S1_L */
-  bn.wsrr  w23, 0x7 /* KEY_S1_H */
+       w10,w11 <= seed1 */
+  bn.wsrr  w20, KEY_S0_L
+  bn.wsrr  w21, KEY_S0_H
+  bn.wsrr  w10, KEY_S1_L
+  bn.wsrr  w11, KEY_S1_H
 
   /* Generate secret key shares.
        w20, w21 <= d0
-       w22, w23 <= d1 */
+       w10, w11 <= d1 */
   jal      x1, p256_key_from_seed
 
   /* Store secret key shares.
@@ -230,7 +230,8 @@ secret_key_from_seed:
   la       x3, d0
   bn.sid   x2++, 0(x3)
   bn.sid   x2++, 32(x3)
-  la       x3, d0
+  li       x2, 10
+  la       x3, d1
   bn.sid   x2++, 0(x3)
   bn.sid   x2, 32(x3)
 
@@ -242,6 +243,12 @@ secret_key_from_seed:
 .globl mode
 .balign 4
 mode:
+  .zero 4
+
+/* Success code for basic validity checks on the public key. */
+.globl ok
+.balign 4
+ok:
   .zero 4
 
 /* Public key (Q) x-coordinate. */
@@ -256,20 +263,14 @@ x:
 y:
   .zero 32
 
-/* Secret key (d) in two shares: d = (d0 + d1) mod n.
-
-   Note: This is also labeled k0, k1 because the `p256_scalar_mult` algorithm
-   is also used for ECDSA signing and reads from those labels; in the case of
-   ECDH, the scalar in `p256_scalar_mult` is always the private key (d). */
+/* Secret key (d) in two shares: d = (d0 + d1) mod n. */
 .globl d0
-.globl k0
 .balign 32
 d0:
 k0:
   .zero 64
 
 .globl d1
-.globl k1
 .balign 32
 d1:
 k1:

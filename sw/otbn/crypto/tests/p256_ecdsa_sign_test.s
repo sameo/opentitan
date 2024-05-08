@@ -1,4 +1,4 @@
-/* Copyright lowRISC contributors. */
+/* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
 
@@ -71,7 +71,7 @@ randomize_share:
 
   /* Get a 63-bit pseudorandom number.
        w0 <= URND()[255:193] = r */
-  bn.wsrr  w0, 0x2 /* URND*/
+  bn.wsrr  w0, URND
   bn.rshi  w0, w31, w0 >> 193
 
   /* Load the curve order n.

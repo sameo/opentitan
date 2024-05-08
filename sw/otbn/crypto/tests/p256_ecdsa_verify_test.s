@@ -1,4 +1,4 @@
-/* Copyright lowRISC contributors. */
+/* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
 
@@ -20,10 +20,12 @@ ecdsa_verify_test:
   /* call ECDSA signature verification subroutine in P-256 lib */
   jal      x1, p256_verify
 
-  /* load signature to wregs for comparison with reference */
+  /* load results to wregs for comparison with reference */
   li        x2, 0
   la        x3, x_r
   bn.lid    x2, 0(x3)
+  la        x3, ok
+  lw        x2, 0(x3)
 
   ecall
 

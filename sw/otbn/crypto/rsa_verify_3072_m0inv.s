@@ -1,4 +1,4 @@
-/* Copyright lowRISC contributors. */
+/* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
 
@@ -68,7 +68,7 @@ check_eq_w6w27:
 
     /* Get value from flag register.
          x3 <= (b < a) */
-    csrrs     x3, 0x7c0, x0
+    csrrs     x3, FG0, x0
     andi      x3, x3, 1
 
     /* Check if a < b. */
@@ -76,7 +76,7 @@ check_eq_w6w27:
 
     /* Get value from flag register.
          x4 <= (a < b) */
-    csrrs     x4, 0x7c0, x0
+    csrrs     x4, FG0, x0
     andi      x4, x4, 1
 
     /* If b < a or a < b, then a != b; otherwise a = b.

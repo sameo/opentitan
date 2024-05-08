@@ -1,4 +1,4 @@
-/* Copyright lowRISC contributors. */
+/* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
 
@@ -25,7 +25,7 @@ main:
   li        x2, 29
   la        x3, p256_n
   bn.lid    x2, 0(x3)
-  bn.wsrw   0, w29
+  bn.wsrw   MOD, w29
 
   /* Load first share of input.
        w0, w1 <= dmem[k0] */
@@ -48,7 +48,7 @@ main:
 
   /* Generate a random 127-bit number.
        w4 <= URND()[255:129] */
-  bn.wsrr  w4, 0x2 /* URND */
+  bn.wsrr  w4, URND
   bn.rshi  w4, w31, w4 >> 129
 
   /* Add 1 to get a 128-bit nonzero scalar for masking.
