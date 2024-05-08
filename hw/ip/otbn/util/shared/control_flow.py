@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright lowRISC contributors.
+# Copyright lowRISC contributors (OpenTitan project).
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -308,9 +308,9 @@ def _get_next_control_locations(insn: Insn, operands: Dict[str, int],
     elif insn.mnemonic == 'ecall':
         return [Ecall()]
 
-    raise RuntimeError(
-        'Unrecognized control flow instruction (straight-line=false) at PC {:#x}: {}'
-        .format(pc, insn.disassemble(pc, operands)))
+    raise RuntimeError('Unrecognized control flow instruction '
+                       '(straight-line=false) at PC {:#x}: {}'
+                       .format(pc, insn.disassemble(pc, operands)))
 
 
 def _populate_control_graph(graph: ControlGraph, program: OTBNProgram,
