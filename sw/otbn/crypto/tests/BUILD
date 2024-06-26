@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-load("//rules:otbn.bzl", "otbn_consttime_test", "otbn_sim_test")
+load("//rules:otbn.bzl", "otbn_consttime_test", "otbn_library", "otbn_sim_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -200,7 +200,7 @@ otbn_sim_test(
     ],
     exp = "p256_base_mult_test.exp",
     deps = [
-        "//sw/otbn/crypto:p256",
+        "//sw/otbn/crypto:p256_base",
     ],
 )
 
@@ -235,7 +235,18 @@ otbn_sim_test(
     ],
     exp = "p256_key_from_seed_test.exp",
     deps = [
-        "//sw/otbn/crypto:p256",
+        "//sw/otbn/crypto:p256_base",
+    ],
+)
+
+otbn_sim_test(
+    name = "p256_mul_modp_test",
+    srcs = [
+        "p256_mul_modp_test.s",
+    ],
+    exp = "p256_mul_modp_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p256_base",
     ],
 )
 
@@ -248,10 +259,10 @@ otbn_consttime_test(
 )
 
 otbn_consttime_test(
-    name = "p256_scalar_mult_consttime",
-    subroutine = "p256_scalar_mult",
+    name = "p256_shared_key_consttime",
+    subroutine = "p256_shared_key",
     deps = [
-        "//sw/otbn/crypto:p256_ecdsa",
+        "//sw/otbn/crypto:p256_ecdh",
     ],
 )
 
@@ -276,7 +287,8 @@ otbn_sim_test(
     ],
     exp = "p256_ecdsa_sign_test.exp",
     deps = [
-        "//sw/otbn/crypto:p256",
+        "//sw/otbn/crypto:p256_base",
+        "//sw/otbn/crypto:p256_sign",
     ],
 )
 
@@ -287,7 +299,8 @@ otbn_sim_test(
     ],
     exp = "p256_ecdsa_verify_test.exp",
     deps = [
-        "//sw/otbn/crypto:p256",
+        "//sw/otbn/crypto:p256_base",
+        "//sw/otbn/crypto:p256_verify",
     ],
 )
 
@@ -298,7 +311,8 @@ otbn_sim_test(
     ],
     exp = "p256_isoncurve_test.exp",
     deps = [
-        "//sw/otbn/crypto:p256",
+        "//sw/otbn/crypto:p256_base",
+        "//sw/otbn/crypto:p256_isoncurve",
     ],
 )
 
@@ -309,7 +323,7 @@ otbn_sim_test(
     ],
     exp = "p256_proj_add_test.exp",
     deps = [
-        "//sw/otbn/crypto:p256",
+        "//sw/otbn/crypto:p256_base",
     ],
 )
 
@@ -320,7 +334,43 @@ otbn_sim_test(
     ],
     exp = "p256_scalar_mult_test.exp",
     deps = [
-        "//sw/otbn/crypto:p256",
+        "//sw/otbn/crypto:p256_base",
+    ],
+)
+
+otbn_sim_test(
+    name = "p256_ecdh_shared_key_test",
+    srcs = [
+        "p256_ecdh_shared_key_test.s",
+    ],
+    exp = "p256_ecdh_shared_key_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p256_base",
+        "//sw/otbn/crypto:p256_shared_key",
+    ],
+)
+
+otbn_sim_test(
+    name = "p256_arithmetic_to_boolean_test",
+    srcs = [
+        "p256_arithmetic_to_boolean_test.s",
+    ],
+    exp = "p256_arithmetic_to_boolean_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p256_base",
+        "//sw/otbn/crypto:p256_shared_key",
+    ],
+)
+
+otbn_sim_test(
+    name = "p256_arithmetic_to_boolean_mod_test",
+    srcs = [
+        "p256_arithmetic_to_boolean_mod_test.s",
+    ],
+    exp = "p256_arithmetic_to_boolean_mod_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p256_base",
+        "//sw/otbn/crypto:p256_shared_key",
     ],
 )
 
@@ -332,7 +382,46 @@ otbn_sim_test(
     exp = "p384_base_mult_test.exp",
     deps = [
         "//sw/otbn/crypto:p384_base",
-        "//sw/otbn/crypto:p384_sign",
+        "//sw/otbn/crypto:p384_base_mult",
+        "//sw/otbn/crypto:p384_internal_mult",
+    ],
+)
+
+otbn_sim_test(
+    name = "p384_arithmetic_to_boolean_test",
+    srcs = [
+        "p384_arithmetic_to_boolean_test.s",
+    ],
+    exp = "p384_arithmetic_to_boolean_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p384_a2b",
+        "//sw/otbn/crypto:p384_base",
+    ],
+)
+
+otbn_sim_test(
+    name = "p384_arithmetic_to_boolean_mod_test",
+    srcs = [
+        "p384_arithmetic_to_boolean_mod_test.s",
+    ],
+    exp = "p384_arithmetic_to_boolean_mod_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p384_a2b",
+        "//sw/otbn/crypto:p384_base",
+    ],
+)
+
+otbn_sim_test(
+    name = "p384_ecdh_shared_key_test",
+    srcs = [
+        "p384_ecdh_shared_key_test.s",
+    ],
+    exp = "p384_ecdh_shared_key_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p384_a2b",
+        "//sw/otbn/crypto:p384_base",
+        "//sw/otbn/crypto:p384_internal_mult",
+        "//sw/otbn/crypto:p384_scalar_mult",
     ],
 )
 
@@ -344,6 +433,8 @@ otbn_sim_test(
     exp = "p384_ecdsa_sign_test.exp",
     deps = [
         "//sw/otbn/crypto:p384_base",
+        "//sw/otbn/crypto:p384_internal_mult",
+        "//sw/otbn/crypto:p384_modinv",
         "//sw/otbn/crypto:p384_sign",
     ],
 )
@@ -356,6 +447,8 @@ otbn_sim_test(
     exp = "p384_ecdsa_verify_test.exp",
     deps = [
         "//sw/otbn/crypto:p384_base",
+        "//sw/otbn/crypto:p384_isoncurve",
+        "//sw/otbn/crypto:p384_modinv",
         "//sw/otbn/crypto:p384_verify",
     ],
 )
@@ -368,7 +461,31 @@ otbn_sim_test(
     exp = "p384_isoncurve_test.exp",
     deps = [
         "//sw/otbn/crypto:p384_base",
-        "//sw/otbn/crypto:p384_verify",
+        "//sw/otbn/crypto:p384_isoncurve",
+    ],
+)
+
+otbn_sim_test(
+    name = "p384_curve_point_valid_test",
+    srcs = [
+        "p384_curve_point_valid_test.s",
+    ],
+    exp = "p384_curve_point_valid_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p384_base",
+        "//sw/otbn/crypto:p384_isoncurve",
+    ],
+)
+
+otbn_sim_test(
+    name = "p384_keygen_test",
+    srcs = [
+        "p384_keygen_test.s",
+    ],
+    exp = "p384_keygen_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p384_base",
+        "//sw/otbn/crypto:p384_keygen",
     ],
 )
 
@@ -391,7 +508,19 @@ otbn_sim_test(
     exp = "p384_scalar_mult_test.exp",
     deps = [
         "//sw/otbn/crypto:p384_base",
-        "//sw/otbn/crypto:p384_sign",
+        "//sw/otbn/crypto:p384_internal_mult",
+        "//sw/otbn/crypto:p384_scalar_mult",
+    ],
+)
+
+otbn_sim_test(
+    name = "p384_mulmod448x128_test",
+    srcs = [
+        "p384_mulmod448x128_test.s",
+    ],
+    exp = "p384_mulmod448x128_test.exp",
+    deps = [
+        "//sw/otbn/crypto:p384_base",
     ],
 )
 
@@ -399,7 +528,15 @@ otbn_consttime_test(
     name = "p384_base_mult_consttime",
     subroutine = "p384_base_mult",
     deps = [
-        ":p384_ecdsa_sign_test",
+        ":p384_base_mult_test",
+    ],
+)
+
+otbn_consttime_test(
+    name = "p384_scalar_mult_consttime",
+    subroutine = "p384_scalar_mult",
+    deps = [
+        ":p384_scalar_mult_test",
     ],
 )
 
@@ -447,11 +584,10 @@ otbn_consttime_test(
     ],
 )
 
-otbn_consttime_test(
-    name = "scalar_mult_p384_consttime",
-    subroutine = "scalar_mult_p384",
-    deps = [
-        ":p384_ecdsa_sign_test",
+otbn_library(
+    name = "fake_primality",
+    srcs = [
+        "fake_primality.s",
     ],
 )
 
@@ -618,21 +754,141 @@ otbn_consttime_test(
     ],
 )
 
-otbn_sim_test(
-    name = "rsa_keygen_checkpq_test",
-    # This test is very long because it runs multiple primality tests.
-    timeout = "eternal",
+otbn_library(
+    name = "rsa_keygen_checkpq_test_data",
     srcs = [
-        "rsa_keygen_checkpq_test.s",
+        "rsa_keygen_checkpq_test_data.s",
     ],
-    exp = "rsa_keygen_checkpq_test.exp",
+)
+
+otbn_sim_test(
+    name = "rsa_keygen_checkp_good_test",
+    timeout = "long",  # runs a primality test
+    srcs = [
+        "rsa_keygen_checkp_good_test.s",
+    ],
+    exp = "rsa_keygen_checkp_good_test.exp",
+    tags = ["nightly"],  # slow, do not run in CI
     deps = [
+        ":rsa_keygen_checkpq_test_data",
         "//sw/otbn/crypto:div",
         "//sw/otbn/crypto:gcd",
         "//sw/otbn/crypto:lcm",
         "//sw/otbn/crypto:montmul",
         "//sw/otbn/crypto:mul",
         "//sw/otbn/crypto:primality",
+        "//sw/otbn/crypto:rsa_keygen",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_keygen_checkp_not_relprime_test",
+    srcs = [
+        "rsa_keygen_checkp_not_relprime_test.s",
+    ],
+    exp = "rsa_keygen_checkp_not_relprime_test.exp",
+    deps = [
+        ":fake_primality",
+        ":rsa_keygen_checkpq_test_data",
+        "//sw/otbn/crypto:div",
+        "//sw/otbn/crypto:gcd",
+        "//sw/otbn/crypto:lcm",
+        "//sw/otbn/crypto:montmul",
+        "//sw/otbn/crypto:mul",
+        "//sw/otbn/crypto:rsa_keygen",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_keygen_checkp_not_prime_test",
+    timeout = "long",  # runs a primality test
+    srcs = [
+        "rsa_keygen_checkp_not_prime_test.s",
+    ],
+    exp = "rsa_keygen_checkp_not_prime_test.exp",
+    deps = [
+        ":rsa_keygen_checkpq_test_data",
+        "//sw/otbn/crypto:div",
+        "//sw/otbn/crypto:gcd",
+        "//sw/otbn/crypto:lcm",
+        "//sw/otbn/crypto:montmul",
+        "//sw/otbn/crypto:mul",
+        "//sw/otbn/crypto:primality",
+        "//sw/otbn/crypto:rsa_keygen",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_keygen_checkq_good_test",
+    timeout = "long",  # runs a primality test
+    srcs = [
+        "rsa_keygen_checkq_good_test.s",
+    ],
+    exp = "rsa_keygen_checkq_good_test.exp",
+    tags = ["nightly"],  # slow, do not run in CI
+    deps = [
+        ":rsa_keygen_checkpq_test_data",
+        "//sw/otbn/crypto:div",
+        "//sw/otbn/crypto:gcd",
+        "//sw/otbn/crypto:lcm",
+        "//sw/otbn/crypto:montmul",
+        "//sw/otbn/crypto:mul",
+        "//sw/otbn/crypto:primality",
+        "//sw/otbn/crypto:rsa_keygen",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_keygen_checkq_not_prime_test",
+    timeout = "long",  # runs a primality test
+    srcs = [
+        "rsa_keygen_checkq_not_prime_test.s",
+    ],
+    exp = "rsa_keygen_checkq_not_prime_test.exp",
+    deps = [
+        ":rsa_keygen_checkpq_test_data",
+        "//sw/otbn/crypto:div",
+        "//sw/otbn/crypto:gcd",
+        "//sw/otbn/crypto:lcm",
+        "//sw/otbn/crypto:montmul",
+        "//sw/otbn/crypto:mul",
+        "//sw/otbn/crypto:primality",
+        "//sw/otbn/crypto:rsa_keygen",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_keygen_checkq_not_relprime_test",
+    srcs = [
+        "rsa_keygen_checkq_not_relprime_test.s",
+    ],
+    exp = "rsa_keygen_checkq_not_relprime_test.exp",
+    deps = [
+        ":fake_primality",
+        ":rsa_keygen_checkpq_test_data",
+        "//sw/otbn/crypto:div",
+        "//sw/otbn/crypto:gcd",
+        "//sw/otbn/crypto:lcm",
+        "//sw/otbn/crypto:montmul",
+        "//sw/otbn/crypto:mul",
+        "//sw/otbn/crypto:rsa_keygen",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_keygen_checkq_too_close_test",
+    srcs = [
+        "rsa_keygen_checkq_too_close_test.s",
+    ],
+    exp = "rsa_keygen_checkq_too_close_test.exp",
+    deps = [
+        ":fake_primality",
+        ":rsa_keygen_checkpq_test_data",
+        "//sw/otbn/crypto:div",
+        "//sw/otbn/crypto:gcd",
+        "//sw/otbn/crypto:lcm",
+        "//sw/otbn/crypto:montmul",
+        "//sw/otbn/crypto:mul",
         "//sw/otbn/crypto:rsa_keygen",
     ],
 )
@@ -656,6 +912,69 @@ otbn_sim_test(
         "rsa_1024_enc_test.s",
     ],
     exp = "rsa_1024_enc_test.exp",
+    deps = [
+        "//sw/otbn/crypto:modexp",
+        "//sw/otbn/crypto:montmul",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_2048_dec_test",
+    timeout = "eternal",
+    srcs = [
+        "rsa_2048_dec_test.s",
+    ],
+    exp = "rsa_2048_dec_test.exp",
+    deps = [
+        "//sw/otbn/crypto:modexp",
+        "//sw/otbn/crypto:montmul",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_2048_enc_test",
+    srcs = [
+        "rsa_2048_enc_test.s",
+    ],
+    exp = "rsa_2048_enc_test.exp",
+    deps = [
+        "//sw/otbn/crypto:modexp",
+        "//sw/otbn/crypto:montmul",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_3072_dec_test",
+    timeout = "eternal",
+    srcs = [
+        "rsa_3072_dec_test.s",
+    ],
+    exp = "rsa_3072_dec_test.exp",
+    tags = ["nightly"],  # slow, do not run in CI
+    deps = [
+        "//sw/otbn/crypto:modexp",
+        "//sw/otbn/crypto:montmul",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_3072_enc_test",
+    srcs = [
+        "rsa_3072_enc_test.s",
+    ],
+    exp = "rsa_3072_enc_test.exp",
+    deps = [
+        "//sw/otbn/crypto:modexp",
+        "//sw/otbn/crypto:montmul",
+    ],
+)
+
+otbn_sim_test(
+    name = "rsa_4096_enc_test",
+    srcs = [
+        "rsa_4096_enc_test.s",
+    ],
+    exp = "rsa_4096_enc_test.exp",
     deps = [
         "//sw/otbn/crypto:modexp",
         "//sw/otbn/crypto:montmul",
@@ -764,11 +1083,23 @@ otbn_sim_test(
 )
 
 otbn_sim_test(
-    name = "x25519_test",
+    name = "x25519_test1",
     srcs = [
-        "x25519_test.s",
+        "x25519_test1.s",
     ],
-    exp = "x25519_test.exp",
+    exp = "x25519_test1.exp",
+    deps = [
+        "//sw/otbn/crypto:field25519",
+        "//sw/otbn/crypto:x25519",
+    ],
+)
+
+otbn_sim_test(
+    name = "x25519_test2",
+    srcs = [
+        "x25519_test2.s",
+    ],
+    exp = "x25519_test2.exp",
     deps = [
         "//sw/otbn/crypto:field25519",
         "//sw/otbn/crypto:x25519",
@@ -779,6 +1110,6 @@ otbn_consttime_test(
     name = "x25519_consttime",
     subroutine = "X25519",
     deps = [
-        ":x25519_test",
+        ":x25519_test1",
     ],
 )

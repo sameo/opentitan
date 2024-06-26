@@ -111,8 +111,9 @@ ecdsa_sign:
  * @param[out] dmem[x_r]: dmem buffer for reduced affine x_r-coordinate (x_1)
  */
 ecdsa_verify:
-  /* Validate the public key. */
-  jal      x1, check_public_key_valid
+  /* Validate the public key (jumps back here if successful). */
+  jal      x0, check_public_key_valid
+  _pk_valid:
 
   /* Verify the signature (compute x_r). */
   jal      x1, p256_verify
@@ -165,18 +166,18 @@ sideload_ecdsa_sign:
 secret_key_from_seed:
   /* Load keymgr seeds from WSRs.
        w20,w21 <= seed0
-       w22,w23 <= seed1 */
-  bn.wsrr  w20, 4 /*KEY_S0_L*/
-  bn.wsrr  w21, 5 /*KEY_S0_H*/
-  bn.wsrr  w22, 6 /*KEY_S1_L*/
-  bn.wsrr  w23, 7 /*KEY_S1_H*/
+       w10,w11 <= seed1 */
+  bn.wsrr  w20, KEY_S0_L
+  bn.wsrr  w21, KEY_S0_H
+  bn.wsrr  w10, KEY_S1_L
+  bn.wsrr  w11, KEY_S1_H
 
   /* Init all-zero register. */
   bn.xor   w31, w31, w31
 
   /* Generate secret key shares.
        w20, w21 <= d0
-       w22, w23 <= d1 */
+       w10, w11 <= d1 */
   jal      x1, p256_key_from_seed
 
   /* Store secret key shares.
@@ -186,7 +187,8 @@ secret_key_from_seed:
   la       x3, d0
   bn.sid   x2++, 0(x3)
   bn.sid   x2++, 32(x3)
-  la       x3, d0
+  li       x2, 10
+  la       x3, d1
   bn.sid   x2++, 0(x3)
   bn.sid   x2, 32(x3)
 
@@ -230,7 +232,7 @@ check_public_key_valid:
   bn.cmp    w2, w29
 
   /* Trigger a fault if FG0.C is false. */
-  csrrs     x2, 0x7c0, x0
+  csrrs     x2, FG0, x0
   andi      x2, x2, 1
   bne       x2, x0, _x_valid
   unimp
@@ -248,59 +250,31 @@ check_public_key_valid:
   bn.cmp    w2, w29
 
   /* Trigger a fault if FG0.C is false. */
-  csrrs     x2, 0x7c0, x0
+  csrrs     x2, FG0, x0
   andi      x2, x2, 1
   bne       x2, x0, _y_valid
   unimp
 
   _y_valid:
 
-  /* Save the signature values to registers.
-       w4 <= dmem[r]
-       w5 <= dmem[s] */
-  li        x2, 4
-  la        x3, r
-  bn.lid    x2++, 0(x3)
-  la        x3, s
-  bn.lid    x2, 0(x3)
-
   /* Compute both sides of the Weierstrauss equation.
-       dmem[r] <= (x^3 + ax + b) mod p
-       dmem[s] <= (y^2) mod p */
+       w18 <= (x^3 + ax + b) mod p
+       w19 <= (y^2) mod p */
   jal      x1, p256_isoncurve
-
-  /* Load both sides of the equation.
-       w2 <= dmem[r]
-       w3 <= dmem[s] */
-  li        x2, 2
-  la        x3, r
-  bn.lid    x2++, 0(x3)
-  la        x3, s
-  bn.lid    x2, 0(x3)
 
   /* Compare the two sides of the equation.
        FG0.Z <= (y^2) mod p == (x^2 + ax + b) mod p */
-  bn.cmp    w2, w3
+  bn.cmp    w18, w19
 
-  /* Trigger a fault if FG0.Z is false. */
-  csrrs     x2, 0x7c0, x0
+  /* Trigger a fault if FG0.Z is false; otherwise jump back to the single call
+     site. */
+  csrrs     x2, FG0, x0
   srli      x2, x2, 3
   andi      x2, x2, 1
   bne       x2, x0, _pk_valid
   unimp
-
-  _pk_valid:
-
-  /* Write back the saved signature values.
-       dmem[r] <= w4
-       dmem[s] <= w5 */
-  li        x2, 4
-  la        x3, r
-  bn.sid    x2++, 0(x3)
-  la        x3, s
-  bn.sid    x2, 0(x3)
-
-  ret
+  unimp
+  unimp
 
 .bss
 

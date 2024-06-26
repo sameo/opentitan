@@ -106,36 +106,15 @@ keypair_random:
  * @param[out]  dmem[y]: x1, second share of shared key.
  */
 shared_key:
-  /* Generate shared key d*Q.
-       dmem[x] <= (d*Q).x
-       dmem[y] <= (d*Q).y */
-  jal      x1, p256_scalar_mult
+  /* Validate the public key. Halts the program if the key is invalid and jumps
+     back here if it's OK. */
+  jal      x0, check_public_key_valid
+  _pk_valid:
 
-  /* TODO: `p256_scalar_mult` and the code below briefly handle the shared key
-     in unmasked form. The best way to fixing this is likely:
-       - modify scalar_mult_int to return projective coordinates
-       - get additive arithmetic mask for x before converting it to affine
-       - multiply both shares by Z^-1 to convert to affine form
-       - run a safe arithmetic-to-boolean conversion algorithm
- */
-
-  /* Fetch a fresh random number for blinding.
-       w2 <= URND() */
-  bn.wsrr   w2, 0x2 /* URND */
-
-  /* Store the random number as the second share.
-       dmem[y] <= w2 */
-  li        x2, 2
-  la        x4, y
-  bn.sid    x2, 0(x4)
-
-  /* Blind the x-coordinate.
-       dmem[x] <= dmem[x] ^ w2 */
-  li        x3, 3
-  la        x4, x
-  bn.lid    x3, 0(x4)
-  bn.xor    w3, w3, w2
-  bn.sid    x3, 0(x4)
+  /* Generate boolean-masked shared key (d*Q).x.
+       dmem[x] <= x0
+       dmem[y] <= x1 */
+  jal      x1, p256_shared_key
 
   ecall
 
@@ -212,15 +191,15 @@ shared_key_from_seed:
 secret_key_from_seed:
   /* Load keymgr seeds from WSRs.
        w20,w21 <= seed0
-       w22,w23 <= seed1 */
-  bn.wsrr  w20, 0x4 /* KEY_S0_L */
-  bn.wsrr  w21, 0x5 /* KEY_S0_H */
-  bn.wsrr  w22, 0x6 /* KEY_S1_L */
-  bn.wsrr  w23, 0x7 /* KEY_S1_H */
+       w10,w11 <= seed1 */
+  bn.wsrr  w20, KEY_S0_L
+  bn.wsrr  w21, KEY_S0_H
+  bn.wsrr  w10, KEY_S1_L
+  bn.wsrr  w11, KEY_S1_H
 
   /* Generate secret key shares.
        w20, w21 <= d0
-       w22, w23 <= d1 */
+       w10, w11 <= d1 */
   jal      x1, p256_key_from_seed
 
   /* Store secret key shares.
@@ -230,11 +209,94 @@ secret_key_from_seed:
   la       x3, d0
   bn.sid   x2++, 0(x3)
   bn.sid   x2++, 32(x3)
-  la       x3, d0
+  li       x2, 10
+  la       x3, d1
   bn.sid   x2++, 0(x3)
   bn.sid   x2, 32(x3)
 
   ret
+
+/**
+ * Check if a provided public key is valid.
+ *
+ * For a given public key (x, y), check that:
+ * - x and y are both fully reduced mod p
+ * - (x, y) is on the P-256 curve.
+ *
+ * Note that, because the point is in affine form, it is not possible that (x,
+ * y) is the point at infinity. In some other forms such as projective
+ * coordinates, we would need to check for this also.
+ *
+ * This routine raises a software error and halts operation if the public key
+ * is invalid.
+ *
+ * @param[in] dmem[x]: Public key x-coordinate.
+ * @param[in] dmem[y]: Public key y-coordinate.
+ */
+check_public_key_valid:
+  /* Init all-zero register. */
+  bn.xor   w31, w31, w31
+
+  /* Load domain parameter p.
+       w29 <= dmem[p256_p] = p */
+  li        x2, 29
+  la        x3, p256_p
+  bn.lid    x2, 0(x3)
+
+  /* Load public key x-coordinate.
+       w2 <= dmem[x] = x */
+  li        x2, 2
+  la        x3, x
+  bn.lid    x2, 0(x3)
+
+  /* Compare x to p.
+       FG0.C <= (x < p) */
+  bn.cmp    w2, w29
+
+  /* Trigger a fault if FG0.C is false. */
+  csrrs     x2, FG0, x0
+  andi      x2, x2, 1
+  bne       x2, x0, _x_valid
+  unimp
+
+  _x_valid:
+
+  /* Load public key y-coordinate.
+       w2 <= dmem[y] = y */
+  li        x2, 2
+  la        x3, y
+  bn.lid    x2, 0(x3)
+
+  /* Compare y to p.
+       FG0.C <= (y < p) */
+  bn.cmp    w2, w29
+
+  /* Trigger a fault if FG0.C is false. */
+  csrrs     x2, FG0, x0
+  andi      x2, x2, 1
+  bne       x2, x0, _y_valid
+  unimp
+
+  _y_valid:
+
+  /* Compute both sides of the Weierstrauss equation.
+       w18 <= (x^3 + ax + b) mod p
+       w19 <= (y^2) mod p */
+  jal      x1, p256_isoncurve
+
+  /* Compare the two sides of the equation.
+       FG0.Z <= (y^2) mod p == (x^2 + ax + b) mod p */
+  bn.cmp    w18, w19
+
+  /* Trigger a fault if FG0.Z is false; otherwise jump back to the single call
+     site. */
+  csrrs     x2, FG0, x0
+  srli      x2, x2, 3
+  andi      x2, x2, 1
+  bne       x2, x0, _pk_valid
+  unimp
+  unimp
+  unimp
 
 .bss
 
@@ -256,20 +318,14 @@ x:
 y:
   .zero 32
 
-/* Secret key (d) in two shares: d = (d0 + d1) mod n.
-
-   Note: This is also labeled k0, k1 because the `p256_scalar_mult` algorithm
-   is also used for ECDSA signing and reads from those labels; in the case of
-   ECDH, the scalar in `p256_scalar_mult` is always the private key (d). */
+/* Secret key (d) in two shares: d = (d0 + d1) mod n. */
 .globl d0
-.globl k0
 .balign 32
 d0:
 k0:
   .zero 64
 
 .globl d1
-.globl k1
 .balign 32
 d1:
 k1:

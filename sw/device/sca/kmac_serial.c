@@ -429,10 +429,13 @@ static void kmac_init(void) {
 
   dif_kmac_config_t config = (dif_kmac_config_t){
       .entropy_mode = kDifKmacEntropyModeSoftware,
+      .entropy_fast_process = kDifToggleDisabled,
       .entropy_seed = {0xaa25b4bf, 0x48ce8fff, 0x5a78282a, 0x48465647,
                        0x70410fef},
-      .entropy_fast_process = false,
-      .msg_mask = true,
+      .message_big_endian = kDifToggleDisabled,
+      .output_big_endian = kDifToggleDisabled,
+      .sideload = kDifToggleDisabled,
+      .msg_mask = kDifToggleEnabled,
   };
   SS_CHECK_DIF_OK(dif_kmac_configure(&kmac, config));
 
@@ -587,7 +590,7 @@ bool test_main(void) {
   simple_serial_register_handler('k', sha3_serial_set_key);
   simple_serial_register_handler('p', sha3_serial_single_absorb);
   simple_serial_register_handler('b', sha3_serial_batch);
-  simple_serial_register_handler('t', sha3_serial_fixed_key_set);
+  simple_serial_register_handler('f', sha3_serial_fixed_key_set);
   simple_serial_register_handler('l', sha3_serial_seed_lfsr);
 
   LOG_INFO("Initializing the KMAC peripheral.");
