@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "sw/device/silicon_creator/lib/drivers/flash_ctrl.h"
 #include "sw/device/silicon_creator/lib/drivers/hmac.h"
 #include "sw/device/silicon_creator/lib/drivers/keymgr.h"
 #include "sw/device/silicon_creator/lib/drivers/otbn.h"
 #include "sw/lib/sw/device/silicon_creator/attestation.h"
 #include "sw/lib/sw/device/silicon_creator/base/sec_mmio.h"
+#include "sw/lib/sw/device/base/memory.h"
 #include "sw/lib/sw/device/silicon_creator/dbg_print.h"
 #include "sw/lib/sw/device/silicon_creator/otbn_boot_services.h"
 
@@ -80,6 +80,7 @@ enum {
 OT_WARN_UNUSED_RESULT
 static rom_error_t load_attestation_keygen_seed(
     attestation_key_seed_t additional_seed, uint32_t *seed) {
+#if 0
   // Set flash page configuration and permissions.
   flash_ctrl_info_perms_set(&kFlashCtrlInfoPageAttestationKeySeeds,
                             (flash_ctrl_perms_t){
@@ -116,6 +117,49 @@ static rom_error_t load_attestation_keygen_seed(
     }
     return err;
   }
+#endif
+  // test values for attestation key seeds.
+  /* TODO Get the additional seed from OTP */
+  const uint32_t kSeedValues[3][kAttestationSeedWords] = {
+      {
+          0x70717273,
+          0x74757677,
+          0x78797a7b,
+          0x7c7d7e7f,
+          0x80818283,
+          0x84858687,
+          0x88898a8b,
+          0x8c8d8e8f,
+          0x90b1b2b3,
+          0x94959697,
+      },
+      {
+          0xa0a1a2a3,
+          0xa4a5a6a7,
+          0xa8a9aaab,
+          0xacadaeaf,
+          0xb0b1b2b3,
+          0xb4b5b6b7,
+          0xb8b9babb,
+          0xbcbdbebf,
+          0xc0b1b2b3,
+          0xc4c5c6c7,
+      },
+      {
+          0xd0d1d2d3,
+          0xd4d5d6d7,
+          0xd8d9dadb,
+          0xdcdddedf,
+          0xe0e1e2e3,
+          0xe4e5e6e7,
+          0xe8e9eaeb,
+          0xecedeeef,
+          0xf0b1b2b3,
+          0xf4f5f6f7,
+      },
+  };
+
+  memcpy(seed, kSeedValues[additional_seed], kAttestationSeedBytes);
 
   return kErrorOk;
 }
