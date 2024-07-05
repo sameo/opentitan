@@ -177,7 +177,7 @@ opentitan_functest(
         "//sw/device/lib/testing/test_framework:ottf_main",
         "//sw/lib/sw/device/runtime:log",
         "//sw/otbn/crypto:boot",
-        "//sw/top_darjeeling/sw/test/utils:keymgr_testutils",
+        "//sw/top_darjeeling/sw/test/utils:keymgr_dpe_testutils",
         "//sw/top_darjeeling/sw/device/runtime:print",
     ],
 )
