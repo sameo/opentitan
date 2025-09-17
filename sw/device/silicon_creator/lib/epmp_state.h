@@ -235,6 +235,21 @@ inline void epmp_state_configure_napot(uint32_t entry, epmp_region_t region,
 }
 
 /**
+ * Clear the given PMP entry in state.
+ *
+ * @param entry The index of the entry to update.
+ */
+inline void epmp_state_clear(uint32_t entry) {
+  // Set configuration register.
+  bitfield_field32_t field = {.mask = 0xff, .index = (entry % 4) * 8};
+  epmp_state.pmpcfg[entry / 4] =
+      bitfield_field32_write(epmp_state.pmpcfg[entry / 4], field, 0);
+
+  // Set address registers.
+  epmp_state.pmpaddr[entry] = 0;
+}
+    
+/**
  * Report whether the given state matches the current hardware ePMP
  * configuration.
  *

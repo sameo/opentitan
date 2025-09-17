@@ -384,8 +384,14 @@ hooks.repo(
     dummy = "@lowrisc_opentitan//:sw/device/silicon_creator/rom/hooks",
     env = "ROM_HOOKS_DIR",
 )
+hooks.repo(
+    name = "darjeeling_rom_hooks",
+    dummy = "@lowrisc_opentitan//:hw/top_darjeeling/sw/device/silicon_creator/rom/hooks",
+    env = "DARJEELING_ROM_HOOKS_DIR",
+)
 use_repo(
     hooks,
+    "darjeeling_rom_hooks",
     "manufacturer_test_hooks",
     "provisioning_exts",
     "rom_hooks",

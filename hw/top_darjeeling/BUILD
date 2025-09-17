@@ -6,6 +6,7 @@ load(
     "//rules/opentitan:defs.bzl",
     "DEFAULT_TEST_FAILURE_MSG",
     "DEFAULT_TEST_SUCCESS_MSG",
+    "silicon",
     "sim_dv",
 )
 
@@ -57,4 +58,37 @@ sim_dv(
     base = ":sim_dv_base",
     exec_env = "sim_dv",
     rom = "//sw/device/lib/testing/test_rom:test_rom",
+)
+
+silicon(
+    name = "silicon_creator",
+    args = [
+        "--rcfile=",
+        "--logging=info",
+        "--interface={interface}",
+    ],
+    design = "darjeeling",
+    # TODO: Add switch to enable privdate key.
+    ecdsa_key = {"//sw/device/silicon_creator/rom/keys/fake/ecdsa:test_key_0_ecdsa_p256": "test_key_0"},
+    exec_env = "silicon_creator",
+    extract_sw_logs = "//util/device_sw_utils:extract_sw_logs_db",
+    flash_scramble_tool = "//util/design:gen-flash-img",
+    libs = [
+        "//sw/device/lib/arch:boot_stage_rom_ext",
+        "//sw/device/lib/arch:silicon",
+        "//hw/top_darjeeling/sw/dt:silicon",
+    ],
+    linker_script = "//sw/device/lib/testing/test_framework:ottf_ld_silicon_creator_slot_a",
+    manifest = "//sw/device/silicon_creator/rom_ext:manifest",
+    param = {
+        "interface": "teacup",
+        "exit_success": DEFAULT_TEST_SUCCESS_MSG,
+        "exit_failure": DEFAULT_TEST_FAILURE_MSG,
+    },
+    test_cmd = """
+        --exec="transport init"
+        --exec="bootstrap --clear-uart=true {firmware}"
+        --exec="console --non-interactive --exit-success='{exit_success}' --exit-failure='{exit_failure}'"
+        no-op
+    """,
 )

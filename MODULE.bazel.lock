@@ -223,10 +223,11 @@
     "//rules:extensions.bzl%hooks": {
       "general": {
         "bzlTransitiveDigest": "xoT+tFeFQBTE5N9oR76jK2m1sra33bj1gRgyqt+7rgg=",
-        "usagesDigest": "re8Bj0kHsnfdZAHRu7WGzlihqBGkbIfbVidayifDqoc=",
+        "usagesDigest": "R0OIbcgmQR2k0ZblD9QEuB6ZkU5bJIwOof6yPKnW1hw=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {
+          "DARJEELING_ROM_HOOKS_DIR": null,
           "MANUFACTURER_HOOKS_DIR": null,
           "PROV_EXTS_DIR": null,
           "ROM_HOOKS_DIR": null,
@@ -255,6 +256,12 @@
             "repoRuleId": "@@//rules:extensions.bzl%symlink_from_label",
             "attributes": {
               "src": "@@//:sw/device/silicon_creator/rom/hooks"
+            }
+          },
+          "darjeeling_rom_hooks": {
+            "repoRuleId": "@@//rules:extensions.bzl%symlink_from_label",
+            "attributes": {
+              "src": "@@//:hw/top_darjeeling/sw/device/silicon_creator/rom/hooks"
             }
           }
         },

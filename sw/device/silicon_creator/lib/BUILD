@@ -18,6 +18,7 @@ load(
     "verilator_params",
 )
 load("//rules/opentitan:util.bzl", "flatten")
+load("//rules:linker.bzl", "ld_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -577,5 +578,12 @@ cc_library(
     ],
     deps = [
         "//sw/device/silicon_creator/lib/drivers:uart",
+    ],
+)
+
+ld_library(
+    name = "rom_patch_sections",
+    includes = [
+        "rom_patch.ld",
     ],
 )
