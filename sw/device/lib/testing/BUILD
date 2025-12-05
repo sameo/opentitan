@@ -25,17 +25,29 @@ cc_library(
     name = "aes_testutils",
     srcs = ["aes_testutils.c"],
     hdrs = ["aes_testutils.h"],
+    defines = opentitan_if_ip(
+        "csrng",
+        # Assume that if csrng is present then so is the edn.
+        ["AES_TESTUTILS_HAS_EDN_AND_CSRNG"],
+        [],
+    ),
     target_compatible_with = [OPENTITAN_CPU],
     deps = [
         "//hw/ip/aes:model",
         "//hw/top:dt",
         "//sw/device/lib/dif:aes",
-        "//sw/device/lib/dif:csrng_shared",
-        "//sw/device/lib/dif:edn",
         "//sw/device/lib/runtime:ibex",
-        "//sw/device/lib/testing:csrng_testutils",
         "//sw/device/lib/testing/test_framework:check",
-    ],
+    ] + opentitan_if_ip(
+        "csrng",
+        # Assume that if csrng is present then so is the edn.
+        [
+            "//sw/device/lib/dif:csrng_shared",
+            "//sw/device/lib/dif:edn",
+            "//sw/device/lib/testing:csrng_testutils",
+        ],
+        [],
+    ),
 )
 
 cc_library(
@@ -92,6 +104,7 @@ cc_library(
     hdrs = ["csrng_testutils.h"],
     target_compatible_with = [OPENTITAN_CPU],
     deps = [
+        "//hw/top:csrng_c_regs",
         "//sw/device/lib/dif:csrng",
         "//sw/device/lib/testing:rand_testutils",
         "//sw/device/lib/testing/test_framework:check",
@@ -212,6 +225,7 @@ cc_library(
     hdrs = ["i2c_testutils.h"],
     target_compatible_with = [OPENTITAN_CPU],
     deps = [
+        "//hw/top:dt",
         "//hw/top:i2c_c_regs",
         "//sw/device/lib/dif:i2c",
         "//sw/device/lib/dif:pinmux",
@@ -232,6 +246,7 @@ cc_library(
         ":kmac_testutils",
         ":otp_ctrl_testutils",
         ":rstmgr_testutils",
+        "//hw/top:dt",
         "//hw/top:keymgr_c_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/arch:boot_stage",
@@ -521,8 +536,8 @@ cc_library(
     hdrs = ["uart_testutils.h"],
     target_compatible_with = [OPENTITAN_CPU],
     deps = [
+        "//hw/top:dt",
         "//hw/top:uart_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/dif:pinmux",
         "//sw/device/lib/dif:uart",
         "//sw/device/lib/runtime:ibex",
@@ -624,10 +639,6 @@ cc_library(
 
 # Some testutils are not multitop yet.
 TESTUTILS_EXCEPTIONS = [
-    "aes",
-    "csrng",
-    "i2c",
-    "uart",
     "rstmgr",
 ]
 

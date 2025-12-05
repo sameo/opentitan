@@ -43,8 +43,8 @@ OTTF_DEFINE_TEST_CONFIG();
 enum {
   // Search within this ROM region to find `c.jr x1`, so execution can be
   // tested.
-  kRomTestLocStart = TOP_EARLGREY_ROM_BASE_ADDR + 0x400,
-  kRomTestLocEnd = TOP_EARLGREY_ROM_BASE_ADDR + 0x500,
+  kRomTestLocStart = TOP_EARLGREY_ROM_CTRL_ROM_BASE_ADDR + 0x400,
+  kRomTestLocEnd = TOP_EARLGREY_ROM_CTRL_ROM_BASE_ADDR + 0x500,
   kRomTestLocContent = 0x8082,
 
   // Number of bytes per page.
@@ -60,6 +60,8 @@ enum {
 
   kFlashTestLoc = TOP_EARLGREY_FLASH_CTRL_MEM_BASE_ADDR +
                   kBank1StartPageNum * kFlashBytesPerPage,
+  // The ROM_EXT protects itself using regions 0-1.
+  kFlashRegionNum = 2,
 };
 
 // The flash test location is set to the encoding of `jalr x0, 0(x1)`
@@ -118,7 +120,8 @@ static void setup_flash(void) {
       .permissions = kPmpRegionPermissionsReadWriteExecute,
   };
   pmp_region_configure_napot_result_t result = pmp_region_configure_napot(
-      8, config, TOP_EARLGREY_EFLASH_BASE_ADDR, TOP_EARLGREY_EFLASH_SIZE_BYTES);
+      8, config, TOP_EARLGREY_FLASH_CTRL_MEM_BASE_ADDR,
+      TOP_EARLGREY_FLASH_CTRL_MEM_SIZE_BYTES);
   CHECK(result == kPmpRegionConfigureNapotOk,
         "Load configuration failed, error code = %d", result);
   // When running as ROM_EXT, ROM configures the flash memory to be readonly.
@@ -147,10 +150,10 @@ static void setup_flash(void) {
   dif_flash_ctrl_data_region_properties_t data_region = {
       .base = kBank1StartPageNum, .size = 0x1, .properties = region_properties};
 
-  CHECK_DIF_OK(
-      dif_flash_ctrl_set_data_region_properties(&flash_ctrl, 0, data_region));
-  CHECK_DIF_OK(dif_flash_ctrl_set_data_region_enablement(&flash_ctrl, 0,
-                                                         kDifToggleEnabled));
+  CHECK_DIF_OK(dif_flash_ctrl_set_data_region_properties(
+      &flash_ctrl, kFlashRegionNum, data_region));
+  CHECK_DIF_OK(dif_flash_ctrl_set_data_region_enablement(
+      &flash_ctrl, kFlashRegionNum, kDifToggleEnabled));
 
   // Make flash executable
   CHECK_DIF_OK(

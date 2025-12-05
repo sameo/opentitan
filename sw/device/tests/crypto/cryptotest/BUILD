@@ -11,6 +11,35 @@ filegroup(
     srcs = glob(["**/*.md"]),
 )
 
+# Special Cryptotest firmware and harness used to run ACVP test vectors. The
+# test_args are left empty by default. This allows the user to manually specify
+# paths to the input and output ACVP JSON files that should be used.
+#
+# Example usage:
+# ./bazelisk.sh run \
+#     //sw/device/tests/crypto/cryptotest:acvp_fpga_cw340_sival_rom_ext -- \
+#         --input=${ACVP_DIR}/hmac_sha2_256_vectors.json \
+#         --output=${ACVP_DIR}/hmac_sha2_256_results.json
+cryptotest(
+    name = "acvp",
+    test_args = "",
+    test_harness = "//sw/host/tests/crypto/acvp:harness",
+    test_vectors = [],
+)
+
+cryptotest(
+    name = "hmac_sha256_acvp",
+    test_args = " ".join([
+        "--input=\"$(rootpath //sw/host/cryptotest/testvectors/acvp:hmac_sha256_vectors.json)\"",
+        "--expected=\"$(rootpath //sw/host/cryptotest/testvectors/acvp:hmac_sha256_expected.json)\"",
+    ]),
+    test_harness = "//sw/host/tests/crypto/acvp:harness",
+    test_vectors = [
+        "//sw/host/cryptotest/testvectors/acvp:hmac_sha256_vectors.json",
+        "//sw/host/cryptotest/testvectors/acvp:hmac_sha256_expected.json",
+    ],
+)
+
 AES_TESTVECTOR_TARGETS = [
     "//sw/host/cryptotest/testvectors/data:nist_cavp_aes_kat_{}_{}_{}_json".format(alg, kat_type, key_len)
     for alg in ("cbc", "cfb128", "ecb", "ofb")
@@ -29,6 +58,25 @@ cryptotest(
     test_args = AES_TESTVECTOR_ARGS,
     test_harness = "//sw/host/tests/crypto/aes_nist_kat:harness",
     test_vectors = AES_TESTVECTOR_TARGETS,
+)
+
+AES_GCM_TESTVECTOR_TARGETS = [
+    "//sw/host/cryptotest/testvectors/data:nist_cavp_aes_gcm_{}_{}_json".format(operation, key_len)
+    for operation in ("encryptextiv", "decrypt")
+    for key_len in ("128", "192", "256")
+]
+
+AES_GCM_TESTVECTOR_ARGS = " ".join([
+    "--aes-gcm-json=\"$(rootpath {})\"".format(target)
+    for target in AES_GCM_TESTVECTOR_TARGETS
+])
+
+cryptotest(
+    name = "aes_gcm_kat",
+    slow_test = True,
+    test_args = AES_GCM_TESTVECTOR_ARGS,
+    test_harness = "//sw/host/tests/crypto/aes_gcm_nist_kat:harness",
+    test_vectors = AES_GCM_TESTVECTOR_TARGETS,
 )
 
 ECDSA_TESTVECTOR_TARGETS = [
@@ -96,6 +144,82 @@ cryptotest(
     test_args = ECDH_TESTVECTOR_ARGS,
     test_harness = "//sw/host/tests/crypto/ecdh_kat:harness",
     test_vectors = ECDH_TESTVECTOR_TARGETS,
+)
+
+RSA_TESTVECTOR_TARGETS = [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_pkcs1_1.5_2048_{}.json".format(hash)
+    for hash in [
+        "sha256",
+        "sha384",
+        "sha512",
+        "sha3_256",
+        "sha3_384",
+        "sha3_512",
+    ]
+] + [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_pkcs1_1.5_3072_{}.json".format(hash)
+    for hash in [
+        "sha256",
+        "sha384",
+        "sha512",
+        "sha3_256",
+        "sha3_384",
+        "sha3_512",
+    ]
+] + [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_pkcs1_1.5_4096_{}.json".format(hash)
+    for hash in [
+        "sha256",
+        "sha384",
+        "sha512",
+    ]
+] + [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_pss_2048_{}.json".format(hash)
+    for hash in [
+        "sha256_mgf1_32",
+        "sha384_mgf1_48",
+    ]
+] + [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_pss_3072_sha256_mgf1_32.json",
+] + [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_pss_4096_{}.json".format(hash)
+    for hash in [
+        "sha256_mgf1_32",
+        "sha384_mgf1_48",
+        "sha512_mgf1_64",
+    ]
+] + [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_oaep_2048_{}.json".format(hash)
+    for hash in [
+        "sha256_mgf1sha256",
+        "sha384_mgf1sha384",
+        "sha512_mgf1sha512",
+    ]
+] + [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_oaep_3072_{}.json".format(hash)
+    for hash in [
+        "sha256_mgf1sha256",
+        "sha512_mgf1sha512",
+    ]
+] + [
+    "//sw/host/cryptotest/testvectors/data:wycheproof_rsa_oaep_4096_{}.json".format(hash)
+    for hash in [
+        "sha256_mgf1sha256",
+        "sha512_mgf1sha512",
+    ]
+]
+
+RSA_TESTVECTOR_ARGS = " ".join([
+    "--rsa-json=\"$(rootpath {})\"".format(target)
+    for target in RSA_TESTVECTOR_TARGETS
+])
+
+cryptotest(
+    name = "rsa_kat",
+    slow_test = True,
+    test_args = RSA_TESTVECTOR_ARGS,
+    test_harness = "//sw/host/tests/crypto/rsa_kat:harness",
+    test_vectors = RSA_TESTVECTOR_TARGETS,
 )
 
 SHA256_TESTVECTOR_TARGETS = [
@@ -460,15 +584,18 @@ cryptotest(
 test_suite(
     name = "crypto_kat_test_suite",
     tests = [
+        ":aes_gcm_kat",
         ":aes_kat",
         ":cshake_kat",
         ":drbg_kat",
         ":ecdh_kat",
         ":ecdsa_kat",
+        ":hmac_sha256_acvp",
         ":hmac_sha256_kat",
         ":hmac_sha384_kat",
         ":hmac_sha512_kat",
         ":kmac_kat",
+        ":rsa_kat",
         ":sha256_kat",
         ":sha384_kat",
         ":sha3_224_kat",

@@ -372,6 +372,10 @@ class TopHelper:
 
         # List all pads and put them in an enum.
         self.pad_enum = self._enum_type(Name([]), self.DT_PAD_NAME)
+        self.pad_enum.add_constant(Name.from_snake_case("constant_zero"),
+                                   "Pad that is constantly tied to zero (input)")
+        self.pad_enum.add_constant(Name.from_snake_case("constant_one"),
+                                   "Pad that is constantly tied to one (input)")
         self._pad_map = OrderedDict()
         for pad in pads:
             name = pad['name']
@@ -507,8 +511,22 @@ registers to connect a peripheral to this pad.""",  # noqa:E501
             length = Name(["count"])
         )
         self.pad_dt_values = OrderedDict()
+        topname = self.top["name"]
+
+        self.pad_dt_values[Name.from_snake_case("constant_zero")] = {
+            self.DT_PAD_TYPE_FIELD_NAME: Name.from_snake_case("mio"),
+            self.DT_PAD_MIO_OUT_DIO_FIELD_NAME: "0",
+            self.DT_PAD_INSEL_FIELD_NAME:
+                Name.from_snake_case(f"top_{topname}_pinmux_insel_constant_zero").as_c_enum(),
+        }
+        self.pad_dt_values[Name.from_snake_case("constant_one")] = {
+            self.DT_PAD_TYPE_FIELD_NAME: Name.from_snake_case("mio"),
+            self.DT_PAD_MIO_OUT_DIO_FIELD_NAME: "0",
+            self.DT_PAD_INSEL_FIELD_NAME:
+                Name.from_snake_case(f"top_{topname}_pinmux_insel_constant_one").as_c_enum(),
+        }
+
         for (padname, pad) in self._pad_map.items():
-            topname = self.top["name"]
             if pad["connection"] == "muxed":
                 pad_type = Name.from_snake_case("mio")
                 pad_mio_out_or_direct_pad = "0"
@@ -618,7 +636,9 @@ registers to connect a peripheral to this pad.""",  # noqa:E501
 class IpHelper:
     UNNAMED_REG_BLOCK_NAME = "core"
     INST_ID_FIELD_NAME = Name(["inst", "id"])
-    BASE_ADDR_FIELD_NAME = Name(["base", "addr"])
+    REG_BLOCK_ADDR_FIELD_NAME = Name(["reg", "addr"])
+    MEM_ADDR_FIELD_NAME = Name(["mem", "addr"])
+    MEM_SIZE_FIELD_NAME = Name(["mem", "size"])
     CLOCK_FIELD_NAME = Name(["clock"])
     RESET_FIELD_NAME = Name(["reset"])
     PERIPH_IO_FIELD_NAME = Name(["periph", "io"])
@@ -650,6 +670,7 @@ class IpHelper:
             self.default_node = self.UNNAMED_REG_BLOCK_NAME
 
         self._init_reg_blocks()
+        self._init_memories()
         self._init_irqs()
         self._init_alerts()
         self._init_clocks()
@@ -666,15 +687,16 @@ class IpHelper:
 
     def _init_reg_blocks(self):
         reg_blocks = []
-        self._reg_block_map = {}
         for rb in self.ip.reg_blocks.keys():
             if rb is None:
                 reg_blocks.append(self.UNNAMED_REG_BLOCK_NAME)
             else:
                 reg_blocks.append(rb)
 
-        assert self.default_node in reg_blocks, \
-            "default node ({}) is invalid".format(self.default_node)
+        # If there are no register blocks, we don't need to validate default_node
+        if reg_blocks:
+            assert self.default_node in reg_blocks, \
+                "default node ({}) is invalid".format(self.default_node)
 
         self.reg_block_enum = self._enum_type(
             Name([]), Name(["dt"]) + self.ip_name + Name(["reg", "block"]))
@@ -682,6 +704,16 @@ class IpHelper:
             self.reg_block_enum.add_constant(Name.from_snake_case(rb))
         if isinstance(self.reg_block_enum, CEnum):
             self.reg_block_enum.add_count_constant("Number of register blocks")
+
+    def _init_memories(self):
+        memories = list(self.ip.memories.keys())
+
+        self.memory_enum = self._enum_type(
+            Name([]), Name(["dt"]) + self.ip_name + Name(["memory"]))
+        for mem in memories:
+            self.memory_enum.add_constant(Name.from_snake_case(mem))
+        if isinstance(self.memory_enum, CEnum):
+            self.memory_enum.add_count_constant("Number of memories")
 
     def has_irqs(self):
         return len(self.ip.interrupts) > 0
@@ -869,6 +901,9 @@ class IpHelper:
                 self.inst_enum.add_first_constant("First instance")
             self.inst_enum.add_count_constant("Number of instances")
 
+    def has_reg_blocks(self):
+        return len(self.ip.reg_blocks) > 0
+
     def has_features(self):
         return len(self.ip.features) > 0
 
@@ -885,14 +920,33 @@ class IpHelper:
             field_type = ScalarType(TopHelper.DT_INSTANCE_ID_NAME),
             docstring = "Instance ID"
         )
+        if self.has_reg_blocks():
+            self.inst_struct.add_field(
+                name = self.REG_BLOCK_ADDR_FIELD_NAME,
+                field_type = ArrayMapType(
+                    elem_type = ScalarType("uint32_t"),
+                    index_type = ScalarType(self.reg_block_enum.name),
+                    length = Name(["count"]),
+                ),
+                docstring = "Base address of each register block"
+            )
         self.inst_struct.add_field(
-            name = self.BASE_ADDR_FIELD_NAME,
+            name = self.MEM_ADDR_FIELD_NAME,
             field_type = ArrayMapType(
                 elem_type = ScalarType("uint32_t"),
-                index_type = ScalarType(self.reg_block_enum.name),
+                index_type = ScalarType(self.memory_enum.name),
                 length = Name(["count"]),
             ),
-            docstring = "Base address of each register block"
+            docstring = "Base address of each memory"
+        )
+        self.inst_struct.add_field(
+            name = self.MEM_SIZE_FIELD_NAME,
+            field_type = ArrayMapType(
+                elem_type = ScalarType("uint32_t"),
+                index_type = ScalarType(self.memory_enum.name),
+                length = Name(["count"]),
+            ),
+            docstring = "Size in bytes of each memory"
         )
         if self.has_irqs():
             # FIXME We need to handle better the case where a block is not connected to the PLIC.
@@ -966,17 +1020,35 @@ This value is undefined if the block is not connected to the Alert Handler."""
         inst_desc = OrderedDict()
         # Instance ID.
         inst_desc[self.INST_ID_FIELD_NAME] = Name.from_snake_case(modname)
-        # Base address map.
-        base_addr_map = OrderedDict()
-        for (rb, addr) in m["base_addrs"].items():
-            if rb == "null":
-                rb = self.UNNAMED_REG_BLOCK_NAME
-            rb = Name.from_snake_case(rb)
+        # Reg block address map.
+        if self.has_reg_blocks():
+            reg_block_map = OrderedDict()
+            for rb in self.ip.reg_blocks.keys():
+                rb_key = rb
+                if rb is None:
+                    rb = self.UNNAMED_REG_BLOCK_NAME
+                    rb_key = "null"  # Due to json serializing, None appears as null.
+                rb = Name.from_snake_case(rb)
+                # It is possible that this module is not accessible in this
+                # address space. In this case, return a dummy value.
+                # FIXME Maybe find a better way of doing this.
+                assert rb_key in m["base_addrs"]
+                reg_block_map[rb] = m["base_addrs"][rb_key].get(self._addr_space, "0xffffffff")
+            inst_desc[self.REG_BLOCK_ADDR_FIELD_NAME] = reg_block_map
+        # Memories.
+        mem_addr_map = OrderedDict()
+        mem_size_map = OrderedDict()
+        for mem in self.ip.memories.keys():
+            mem_name = Name.from_snake_case(mem)
             # It is possible that this module is not accessible in this
             # address space. In this case, return a dummy value.
             # FIXME Maybe find a better way of doing this.
-            base_addr_map[rb] = addr.get(self._addr_space, "0xffffffff")
-        inst_desc[self.BASE_ADDR_FIELD_NAME] = base_addr_map
+            assert mem in m["base_addrs"]
+            mem_addr_map[mem_name] = m["base_addrs"][mem].get(self._addr_space, "0xffffffff")
+            assert mem in m["memory"] and "size" in m["memory"][mem]
+            mem_size_map[mem_name] = m["memory"][mem]["size"]
+        inst_desc[self.MEM_ADDR_FIELD_NAME] = mem_addr_map
+        inst_desc[self.MEM_SIZE_FIELD_NAME] = mem_size_map
         # Clock map.
         if self.has_clocks():
             inst_clock_map = OrderedDict()

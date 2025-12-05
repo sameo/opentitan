@@ -93,19 +93,6 @@ typedef enum dif_csrng_cmd_status_kind {
 typedef enum dif_csrng_fifo {
   kDifCsrngFifoCmd,
   kDifCsrngFifoGenBits,
-  kDifCsrngFifoCmdReq,
-  kDifCsrngFifoRcStage,
-  kDifCsrngFifoKeyVrc,
-  kDifCsrngFifoUpdateReq,
-  kDifCsrngFifoBencRec,
-  kDifCsrngFifoBencAck,
-  kDifCsrngFifoPData,
-  kDifCsrngFifoFinal,
-  kDifCsrngFifoGBencAck,
-  kDifCsrngFifoGrcStage,
-  kDifCsrngFifoGGenReq,
-  kDifCsrngFifoGadStage,
-  kDifCsrngFifoCmdId,
 } dif_csrng_fifo_t;
 
 /**
@@ -121,25 +108,17 @@ typedef enum dif_csrng_error {
    */
   kDifCsrngErrorMainSm,
   /**
-   * Indicates an error in the DRBG's generator state machine.
+   * Indicates an error in the CTR_DRBG data path state machine.
    */
-  kDifCsrngErrorDrbgGenSm,
-  /**
-   * Indicates an error in the DRBG's block encoding state machine.
-   */
-  kDifCsrngErrorDrbgUpdateBlockEncSm,
-  /**
-   * Indicates an error in the DRBG's block output state machine.
-   */
-  kDifCsrngErrorDrbgUpdateOutBlockSm,
+  kDifCsrngErrorCtrDrbgSm,
   /**
    * Indicates an error in the AES state machine.
    */
   kDifCsrngErrorAesSm,
   /**
-   * Indicates an error in the generate command's counter.
+   * Indicates an error in one of the counters.
    */
-  kDifCsrngErrorGenerateCmdCounter,
+  kDifCsrngErrorCounters,
   /**
    * Indicates a write to a full FIFO occurred.
    */
@@ -431,12 +410,16 @@ dif_result_t dif_csrng_update(const dif_csrng_t *csrng,
  * of the request to align it to the nearest 128-bit boundary.
  *
  * @param csrng A CSRNG handle.
+ * @param additional_data Additional data for the generate command. Set to NULL
+ * if unused.
  * @param len Number of uint32_t words to generate.
  * @return The result of the operation. KDifOutOfRange if the `len` parameter
  * results in a 128bit block level size greater than 0x800.
  */
 OT_WARN_UNUSED_RESULT
-dif_result_t dif_csrng_generate_start(const dif_csrng_t *csrng, size_t len);
+dif_result_t dif_csrng_generate_start(
+    const dif_csrng_t *csrng, const dif_csrng_seed_material_t *additional_data,
+    size_t len);
 
 /**
  * Reads the output of the last CSRNG generate call.

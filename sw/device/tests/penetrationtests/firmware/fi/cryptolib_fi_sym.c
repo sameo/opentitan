@@ -26,7 +26,7 @@ status_t handle_cryptolib_fi_sym_aes(ujson_t *uj) {
   // The total size of this test can be large due to all these options.
   // Triggers are over the API calls.
   cryptolib_fi_sym_aes_out_t uj_output;
-  memset(&uj_output, 0, sizeof(uj_output));
+  uj_output.status = kUnknown;
   uj_output.status = (size_t)cryptolib_fi_aes_impl(uj_input, &uj_output).value;
   /////////////// STUB END ///////////////
 
@@ -61,7 +61,7 @@ status_t handle_cryptolib_fi_sym_gcm(ujson_t *uj) {
   // Then, verify that tag again, before sending the output.
   // Trigger are over the API calls.
   cryptolib_fi_sym_gcm_out_t uj_output;
-  memset(&uj_output, 0, sizeof(uj_output));
+  uj_output.status = kUnknown;
   uj_output.status = (size_t)cryptolib_fi_gcm_impl(uj_input, &uj_output).value;
   /////////////// STUB END ///////////////
 
@@ -94,7 +94,7 @@ status_t handle_cryptolib_fi_sym_hmac(ujson_t *uj) {
   // Perform an HMAC call.
   // Trigger are over the API calls.
   cryptolib_fi_sym_hmac_out_t uj_output;
-  memset(&uj_output, 0, sizeof(uj_output));
+  uj_output.status = kUnknown;
   uj_output.status = (size_t)cryptolib_fi_hmac_impl(uj_input, &uj_output).value;
   /////////////// STUB END ///////////////
 
@@ -110,7 +110,7 @@ status_t handle_cryptolib_fi_sym_drbg_generate(ujson_t *uj) {
   // Perform a DRBG call to generate random output.
   // Trigger are over the API calls.
   cryptolib_fi_sym_drbg_generate_out_t uj_output;
-  memset(&uj_output, 0, sizeof(uj_output));
+  uj_output.status = kUnknown;
   uj_output.status =
       (size_t)cryptolib_fi_drbg_generate_impl(uj_input, &uj_output).value;
   /////////////// STUB END ///////////////
@@ -127,7 +127,7 @@ status_t handle_cryptolib_fi_sym_drbg_reseed(ujson_t *uj) {
   // Perform a DRBG call to reseed/instantiate the DRBG.
   // Trigger are over the API calls.
   cryptolib_fi_sym_drbg_reseed_out_t uj_output;
-  memset(&uj_output, 0, sizeof(uj_output));
+  uj_output.status = kUnknown;
   uj_output.status =
       (size_t)cryptolib_fi_drbg_reseed_impl(uj_input, &uj_output).value;
   /////////////// STUB END ///////////////
@@ -190,9 +190,9 @@ status_t handle_cryptolib_fi_sym_init(ujson_t *uj) {
   // and reported to the test.
   pentest_configure_alert_handler(
       uj_alert_data.alert_classes, uj_alert_data.enable_alerts,
-      uj_alert_data.enable_classes, uj_alert_data.accumulation_thresholds,
-      uj_alert_data.signals, uj_alert_data.duration_cycles,
-      uj_alert_data.ping_timeout);
+      uj_alert_data.enable_loc_alerts, uj_alert_data.enable_classes,
+      uj_alert_data.accumulation_thresholds, uj_alert_data.signals,
+      uj_alert_data.duration_cycles, uj_alert_data.ping_timeout);
 
   // Configure the CPU for the pentest.
   penetrationtest_device_info_t uj_output;

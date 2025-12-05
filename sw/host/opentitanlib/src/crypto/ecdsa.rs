@@ -10,7 +10,7 @@ use ecdsa::signature::hazmat::PrehashVerifier;
 use p256::NistP256;
 use p256::ecdsa::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_annotate::Annotate;
 use sha2::digest::generic_array::GenericArray;
 use std::fs::File;
@@ -19,7 +19,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 use super::Error;
-use crate::crypto::sha256::{Sha256Digest, sha256};
+use crate::crypto::sha256::Sha256Digest;
 
 pub struct EcdsaPrivateKey {
     pub key: SigningKey,
@@ -59,7 +59,7 @@ impl EcdsaPrivateKey {
     }
 
     pub fn sign(&self, digest: &Sha256Digest) -> Result<EcdsaRawSignature> {
-        let (sig, _) = self.key.sign_prehash_recoverable(&digest.to_be_bytes())?;
+        let (sig, _) = self.key.sign_prehash_recoverable(digest.as_ref())?;
         let bytes = sig.to_bytes();
         let half = bytes.len() / 2;
         // The signature bytes are (R || S).  Since opentitan is a little-endian
@@ -73,12 +73,11 @@ impl EcdsaPrivateKey {
     }
 
     pub fn digest_and_sign(&self, data: &[u8]) -> Result<EcdsaRawSignature> {
-        let digest = sha256(data);
-        self.sign(&digest)
+        self.sign(&Sha256Digest::hash(data))
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Annotate)]
+#[derive(Debug, Deserialize, Annotate)]
 pub struct EcdsaRawSignature {
     #[serde(with = "serde_bytes")]
     #[annotate(format = hexstr)]
@@ -210,7 +209,7 @@ impl EcdsaPublicKey {
         bytes[..half].reverse();
         bytes[half..].reverse();
         let signature = Signature::from_slice(&bytes)?;
-        self.key.verify_prehash(&digest.to_be_bytes(), &signature)?;
+        self.key.verify_prehash(digest.as_ref(), &signature)?;
         Ok(())
     }
 }
@@ -235,7 +234,7 @@ impl TryFrom<&EcdsaRawPublicKey> for EcdsaPublicKey {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Annotate)]
+#[derive(Debug, Deserialize, Annotate)]
 pub struct EcdsaRawPublicKey {
     #[serde(with = "serde_bytes")]
     #[annotate(format = hexstr)]

@@ -7,10 +7,9 @@ use anyhow::{Result, anyhow};
 use clap::Parser;
 use regex::Regex;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::time::Duration;
 
-use opentitanlib::app::TransportWrapper;
+use opentitanlib::app::{TransportWrapper, UartRx};
 use opentitanlib::chip::boot_svc::{BootSlot, UnlockMode};
 use opentitanlib::chip::rom_error::RomError;
 use opentitanlib::rescue::serial::RescueSerial;
@@ -55,6 +54,12 @@ struct Opts {
     rescue_after_activate: Option<PathBuf>,
     #[arg(long, default_value = "SlotA", help = "Which slot to rescue into")]
     rescue_slot: BootSlot,
+    #[arg(
+        long,
+        default_value = "SlotA",
+        help = "Which slot the ROM_EXT is expected to execute from"
+    )]
+    expected_rom_ext_slot: BootSlot,
 
     #[arg(long, default_value_t = true, action = clap::ArgAction::Set, help = "Check the firmware boot in dual-owner mode")]
     dual_owner_boot_check: bool,
@@ -150,7 +155,7 @@ fn flash_info_check(info: &[FlashRegion<'_>], unlocked: bool) -> Result<()> {
 
 fn flash_permission_test(opts: &Opts, transport: &TransportWrapper) -> Result<()> {
     let uart = transport.uart("console")?;
-    let rescue = RescueSerial::new(Rc::clone(&uart));
+    let rescue = RescueSerial::new(uart.clone());
 
     log::info!("###### Get Boot Log (1/2) ######");
     let (data, devid) = transfer_lib::get_device_info(transport, &rescue)?;
@@ -181,6 +186,13 @@ fn flash_permission_test(opts: &Opts, transport: &TransportWrapper) -> Result<()
         /*customize=*/ |_| {},
     )?;
 
+    // The expected_rom_ext_slot is where we expect the ROM_EXT to execute.
+    let romext_region = match opts.expected_rom_ext_slot {
+        BootSlot::SlotA => ["RD-xx-xx-uu-uu-uu", "RD-WR-ER-uu-uu-uu"],
+        BootSlot::SlotB => ["RD-WR-ER-uu-uu-uu", "RD-xx-xx-uu-uu-uu"],
+        _ => return Err(anyhow!("Unknown boot slot {}", data.bl0_slot)),
+    };
+
     if opts.dual_owner_boot_check {
         log::info!("###### Boot in Dual-Owner Mode ######");
         // At this point, the device should be unlocked and should have accepted the owner
@@ -188,8 +200,8 @@ fn flash_permission_test(opts: &Opts, transport: &TransportWrapper) -> Result<()
         //
         // The flash configuration will be the previous owner in Side A and
         // the new owner in SideB.
-        transport.reset_target(Duration::from_millis(50), /*clear_uart=*/ true)?;
-        let capture = UartConsole::wait_for(
+        transport.reset_with_delay(UartRx::Clear, Duration::from_millis(50))?;
+        let capture = UartConsole::wait_for_bytes(
             &*uart,
             r"(?msR)Running(.*)Finished.*PASS!$|BFV:([0-9A-Fa-f]{8})$",
             opts.timeout,
@@ -207,23 +219,25 @@ fn flash_permission_test(opts: &Opts, transport: &TransportWrapper) -> Result<()
         // Note: when in an unlocked state, flash lockdown doesn't apply, so neither
         // the `protect_when_active` nor `lock` bits for individual regions will
         // affect the region config.
+
+        // The ROM_EXT always protects itself in regions 0 and 1.
         assert_eq!(
             region[0],
-            FlashRegion("data", 0, 0, 0, "xx-xx-xx-xx-xx-xx", "UN")
+            FlashRegion("data", 0, 0, 32, romext_region[0], "LK")
         );
         assert_eq!(
             region[1],
-            FlashRegion("data", 1, 0, 0, "xx-xx-xx-xx-xx-xx", "UN")
+            FlashRegion("data", 1, 256, 32, romext_region[1], "LK")
         );
         assert_eq!(
             region[2],
             FlashRegion("data", 2, 0, 0, "xx-xx-xx-xx-xx-xx", "UN")
         );
-        // Flash SideB is the next owner configuration.
         assert_eq!(
             region[3],
-            FlashRegion("data", 3, 256, 32, "RD-WR-ER-xx-xx-xx", "UN")
+            FlashRegion("data", 3, 0, 0, "xx-xx-xx-xx-xx-xx", "UN")
         );
+        // Flash SideB is the next owner configuration.
         assert_eq!(
             region[4],
             FlashRegion("data", 4, 288, 192, "RD-WR-ER-SC-EC-xx", "UN")
@@ -271,8 +285,8 @@ fn flash_permission_test(opts: &Opts, transport: &TransportWrapper) -> Result<()
 
     log::info!("###### Boot After Transfer Complete ######");
     // After the activate command, the device should report the ownership state as `OWND`.
-    transport.reset_target(Duration::from_millis(50), /*clear_uart=*/ true)?;
-    let capture = UartConsole::wait_for(
+    transport.reset_with_delay(UartRx::Clear, Duration::from_millis(50))?;
+    let capture = UartConsole::wait_for_bytes(
         &*uart,
         r"(?msR)Running(.*)Finished.*PASS!$|BFV:([0-9A-Fa-f]{8})$",
         opts.timeout,
@@ -281,18 +295,14 @@ fn flash_permission_test(opts: &Opts, transport: &TransportWrapper) -> Result<()
         return RomError(u32::from_str_radix(&capture[2], 16)?).into();
     }
     let region = FlashRegion::find_all(&capture[1])?;
-    // The rescue_slot shoudl be the active side and has protect_when_active = true.
-    let (romext_region, app_region) = match opts.rescue_slot {
-        BootSlot::SlotA => (
-            ["RD-xx-xx-xx-xx-xx", "RD-WR-ER-xx-xx-xx"],
-            ["RD-xx-xx-SC-EC-xx", "RD-WR-ER-SC-EC-xx"],
-        ),
-        BootSlot::SlotB => (
-            ["RD-WR-ER-xx-xx-xx", "RD-xx-xx-xx-xx-xx"],
-            ["RD-WR-ER-SC-EC-xx", "RD-xx-xx-SC-EC-xx"],
-        ),
+
+    // The rescue_slot should be the active side and has protect_when_active = true.
+    let app_region = match opts.rescue_slot {
+        BootSlot::SlotA => ["RD-xx-xx-SC-EC-xx", "RD-WR-ER-SC-EC-xx"],
+        BootSlot::SlotB => ["RD-WR-ER-SC-EC-xx", "RD-xx-xx-SC-EC-xx"],
         _ => return Err(anyhow!("Unknown boot slot {}", data.bl0_slot)),
     };
+
     //
     // Since we are in a locked ownership state, we expect the region configuration
     // to reflect both the `protect_when_active` and `lock` properties of the
@@ -302,24 +312,25 @@ fn flash_permission_test(opts: &Opts, transport: &TransportWrapper) -> Result<()
     } else {
         "UN"
     };
-    // Flash Slot A:
+    // The ROM_EXT always protects itself in regions 0 and 1.
     assert_eq!(
         region[0],
-        FlashRegion("data", 0, 0, 32, romext_region[0], locked)
+        FlashRegion("data", 0, 0, 32, romext_region[0], "LK")
     );
     assert_eq!(
         region[1],
-        FlashRegion("data", 1, 32, 192, app_region[0], locked)
+        FlashRegion("data", 1, 256, 32, romext_region[1], "LK")
     );
+    // Flash Slot A:
     assert_eq!(
         region[2],
-        FlashRegion("data", 2, 224, 32, "RD-WR-ER-xx-xx-HE", locked)
+        FlashRegion("data", 2, 32, 192, app_region[0], locked)
     );
-    // Flash Slot B:
     assert_eq!(
         region[3],
-        FlashRegion("data", 3, 256, 32, romext_region[1], locked)
+        FlashRegion("data", 3, 224, 32, "RD-WR-ER-xx-xx-HE", locked)
     );
+    // Flash Slot B:
     assert_eq!(
         region[4],
         FlashRegion("data", 4, 288, 192, app_region[1], locked)

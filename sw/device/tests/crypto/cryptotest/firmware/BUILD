@@ -22,10 +22,29 @@ cc_library(
         "//sw/device/lib/crypto/impl:keyblob",
         "//sw/device/lib/crypto/include:datatypes",
         "//sw/device/lib/runtime:log",
-        "//sw/device/lib/testing:rand_testutils",
         "//sw/device/lib/testing/test_framework:ujson_ottf",
         "//sw/device/lib/ujson",
         "//sw/device/tests/crypto/cryptotest/json:aes_commands",
+        "//sw/device/tests/crypto/lib:crypto_test_lib",
+    ],
+)
+
+cc_library(
+    name = "aes_gcm",
+    srcs = ["aes_gcm.c"],
+    hdrs = ["aes_gcm.h"],
+    deps = [
+        "//sw/device/lib/base:memory",
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/crypto/impl:aes_gcm",
+        "//sw/device/lib/crypto/impl:integrity",
+        "//sw/device/lib/crypto/impl:keyblob",
+        "//sw/device/lib/crypto/include:datatypes",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:rand_testutils",
+        "//sw/device/lib/testing/test_framework:ujson_ottf",
+        "//sw/device/lib/ujson",
+        "//sw/device/tests/crypto/cryptotest/json:aes_gcm_commands",
     ],
 )
 
@@ -118,10 +137,32 @@ cc_library(
         "//sw/device/lib/crypto/impl:integrity",
         "//sw/device/lib/crypto/impl:key_transport",
         "//sw/device/lib/runtime:log",
-        "//sw/device/lib/testing:rand_testutils",
         "//sw/device/lib/testing/test_framework:ujson_ottf",
         "//sw/device/lib/ujson",
         "//sw/device/tests/crypto/cryptotest/json:hmac_commands",
+        "//sw/device/tests/crypto/lib:crypto_test_lib",
+    ],
+)
+
+cc_library(
+    name = "rsa",
+    srcs = ["rsa.c"],
+    hdrs = ["rsa.h"],
+    deps = [
+        "//sw/device/lib/base:memory",
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/crypto/impl:integrity",
+        "//sw/device/lib/crypto/impl:keyblob",
+        "//sw/device/lib/crypto/impl:rsa",
+        "//sw/device/lib/crypto/impl:sha2",
+        "//sw/device/lib/crypto/impl:sha3",
+        "//sw/device/lib/crypto/include:crypto_hdrs",
+        "//sw/device/lib/crypto/include:datatypes",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:rand_testutils",
+        "//sw/device/lib/testing/test_framework:ujson_ottf",
+        "//sw/device/lib/ujson",
+        "//sw/device/tests/crypto/cryptotest/json:rsa_commands",
     ],
 )
 
@@ -163,12 +204,14 @@ cc_library(
 
 FIRMWARE_DEPS = [
     ":aes",
+    ":aes_gcm",
     ":drbg",
     ":ecdh",
     ":ecdsa",
     ":hash",
     ":hmac",
     ":kmac",
+    ":rsa",
     ":sphincsplus",
     "//sw/device/lib/base:csr",
     "//sw/device/lib/base:status",

@@ -21,10 +21,10 @@ use ft_lib::{
 };
 use opentitanlib::backend;
 use opentitanlib::console::spi::SpiConsoleDevice;
-use opentitanlib::dif::lc_ctrl::DifLcCtrlState;
 use opentitanlib::test_utils::init::InitializeTest;
 use opentitanlib::test_utils::lc::{read_device_id, read_lc_state};
 use opentitanlib::test_utils::load_sram_program::SramProgramParams;
+use ot_hal::dif::lc_ctrl::DifLcCtrlState;
 use ujson_lib::provisioning_data::{ManufCertgenInputs, ManufFtIndividualizeData};
 use util_lib::{
     encrypt_token, hex_string_to_u8_arrayvec, hex_string_to_u32_arrayvec, load_rsa_public_key,
@@ -135,7 +135,10 @@ fn main() -> Result<()> {
     transport.apply_default_configuration(None)?;
     let spi = transport.spi(&opts.console_spi)?;
     let spi_console_device = SpiConsoleDevice::new(&*spi, None)?;
-    InitializeTest::print_result("load_bitstream", opts.init.load_bitstream.init(&transport))?;
+    InitializeTest::print_result(
+        "load_bitstream",
+        opts.init.load_bitstream.init(&transport).map(|_| None),
+    )?;
 
     // Parse and format LC tokens.
     let _test_unlock_token =
@@ -215,11 +218,7 @@ fn main() -> Result<()> {
     };
 
     // Only run test unlock operation if we are in a locked LC state.
-    response.lc_state.initial = read_lc_state(
-        &transport,
-        &opts.init.jtag_params,
-        opts.init.bootstrap.options.reset_delay,
-    )?;
+    response.lc_state.initial = read_lc_state(&transport, &opts.init.jtag_params)?;
     match response.lc_state.initial {
         DifLcCtrlState::TestLocked0
         | DifLcCtrlState::TestLocked1
@@ -229,12 +228,7 @@ fn main() -> Result<()> {
         | DifLcCtrlState::TestLocked5
         | DifLcCtrlState::TestLocked6 => {
             let t0 = Instant::now();
-            test_unlock(
-                &transport,
-                &opts.init.jtag_params,
-                opts.init.bootstrap.options.reset_delay,
-                &_test_unlock_token,
-            )?;
+            test_unlock(&transport, &opts.init.jtag_params, &_test_unlock_token)?;
             response.stats.log_elapsed_time("test-unlock", t0);
         }
         _ => {
@@ -244,11 +238,7 @@ fn main() -> Result<()> {
 
     // Only run the SRAM individualize program in a test unlocked state. If we have transitioned to
     // a mission state already, then we can skip this step.
-    response.lc_state.unlocked = read_lc_state(
-        &transport,
-        &opts.init.jtag_params,
-        opts.init.bootstrap.options.reset_delay,
-    )?;
+    response.lc_state.unlocked = read_lc_state(&transport, &opts.init.jtag_params)?;
     match response.lc_state.unlocked {
         DifLcCtrlState::TestUnlocked0 => {
             bail!("FT stage cannot be run from test unlocked 0. Run CP stage first.");
@@ -266,7 +256,6 @@ fn main() -> Result<()> {
             run_sram_ft_individualize(
                 &transport,
                 &opts.init.jtag_params,
-                opts.init.bootstrap.options.reset_delay,
                 &opts.sram_program,
                 &ft_individualize_data_in,
                 opts.timeout,
@@ -279,7 +268,6 @@ fn main() -> Result<()> {
             test_exit(
                 &transport,
                 &opts.init.jtag_params,
-                opts.init.bootstrap.options.reset_delay,
                 &_test_exit_token,
                 opts.provisioning_data.target_mission_mode_lc_state,
             )?;
@@ -311,7 +299,6 @@ fn main() -> Result<()> {
 
     check_slot_b_boot_up(
         &transport,
-        &opts.init,
         opts.timeout,
         &mut response,
         opts.owner_success_text,
@@ -319,11 +306,7 @@ fn main() -> Result<()> {
     log::info!("Provisioning Done");
 
     // Extract final device ID.
-    let mut final_device_id = read_device_id(
-        &transport,
-        &opts.init.jtag_params,
-        opts.init.bootstrap.options.reset_delay,
-    )?;
+    let mut final_device_id = read_device_id(&transport, &opts.init.jtag_params)?;
 
     // Convert final device ID to a big-endian string.
     final_device_id.reverse();

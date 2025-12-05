@@ -5,7 +5,7 @@
 // ------------------- W A R N I N G: A U T O - G E N E R A T E D   C O D E !! -------------------//
 // PLEASE DO NOT HAND-EDIT THIS FILE. IT HAS BEEN AUTO-GENERATED WITH THE FOLLOWING COMMAND:
 //
-// util/topgen.py -t hw/top_darjeeling/data/top_darjeeling.hjson \
+// util/topgen.py -t hw/top_darjeeling/data/top_darjeeling.hjson
 //                -o hw/top_darjeeling/
 
 package top_darjeeling_pkg;
@@ -67,7 +67,7 @@ package top_darjeeling_pkg;
   /**
    * Peripheral size in bytes for core device on otp_ctrl in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_OTP_CTRL_CORE_SIZE_BYTES = 32'h8000;
+  parameter int unsigned TOP_DARJEELING_OTP_CTRL_CORE_SIZE_BYTES = 32'h10000;
 
   /**
    * Peripheral base address for prim device on otp_macro in top darjeeling.
@@ -177,17 +177,7 @@ package top_darjeeling_pkg;
   /**
    * Peripheral size in bytes for core device on soc_proxy in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_SOC_PROXY_CORE_SIZE_BYTES = 32'h10;
-
-  /**
-   * Peripheral base address for ctn device on soc_proxy in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_SOC_PROXY_CTN_BASE_ADDR = 32'h40000000;
-
-  /**
-   * Peripheral size in bytes for ctn device on soc_proxy in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_SOC_PROXY_CTN_SIZE_BYTES = 32'h80000000;
+  parameter int unsigned TOP_DARJEELING_SOC_PROXY_CORE_SIZE_BYTES = 32'h8;
 
   /**
    * Peripheral base address for regs device on sram_ctrl_ret_aon in top darjeeling.
@@ -198,16 +188,6 @@ package top_darjeeling_pkg;
    * Peripheral size in bytes for regs device on sram_ctrl_ret_aon in top darjeeling.
    */
   parameter int unsigned TOP_DARJEELING_SRAM_CTRL_RET_AON_REGS_SIZE_BYTES = 32'h40;
-
-  /**
-   * Peripheral base address for ram device on sram_ctrl_ret_aon in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_RET_AON_RAM_BASE_ADDR = 32'h30600000;
-
-  /**
-   * Peripheral size in bytes for ram device on sram_ctrl_ret_aon in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_RET_AON_RAM_SIZE_BYTES = 32'h1000;
 
   /**
    * Peripheral base address for regs device on rv_dm in top darjeeling.
@@ -340,16 +320,6 @@ package top_darjeeling_pkg;
   parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MAIN_REGS_SIZE_BYTES = 32'h40;
 
   /**
-   * Peripheral base address for ram device on sram_ctrl_main in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MAIN_RAM_BASE_ADDR = 32'h10000000;
-
-  /**
-   * Peripheral size in bytes for ram device on sram_ctrl_main in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MAIN_RAM_SIZE_BYTES = 32'h10000;
-
-  /**
    * Peripheral base address for regs device on sram_ctrl_mbox in top darjeeling.
    */
   parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MBOX_REGS_BASE_ADDR = 32'h211D0000;
@@ -358,16 +328,6 @@ package top_darjeeling_pkg;
    * Peripheral size in bytes for regs device on sram_ctrl_mbox in top darjeeling.
    */
   parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MBOX_REGS_SIZE_BYTES = 32'h40;
-
-  /**
-   * Peripheral base address for ram device on sram_ctrl_mbox in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MBOX_RAM_BASE_ADDR = 32'h11000000;
-
-  /**
-   * Peripheral size in bytes for ram device on sram_ctrl_mbox in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MBOX_RAM_SIZE_BYTES = 32'h1000;
 
   /**
    * Peripheral base address for regs device on rom_ctrl0 in top darjeeling.
@@ -380,16 +340,6 @@ package top_darjeeling_pkg;
   parameter int unsigned TOP_DARJEELING_ROM_CTRL0_REGS_SIZE_BYTES = 32'h80;
 
   /**
-   * Peripheral base address for rom device on rom_ctrl0 in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_ROM_CTRL0_ROM_BASE_ADDR = 32'h8000;
-
-  /**
-   * Peripheral size in bytes for rom device on rom_ctrl0 in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_ROM_CTRL0_ROM_SIZE_BYTES = 32'h8000;
-
-  /**
    * Peripheral base address for regs device on rom_ctrl1 in top darjeeling.
    */
   parameter int unsigned TOP_DARJEELING_ROM_CTRL1_REGS_BASE_ADDR = 32'h211E1000;
@@ -398,16 +348,6 @@ package top_darjeeling_pkg;
    * Peripheral size in bytes for regs device on rom_ctrl1 in top darjeeling.
    */
   parameter int unsigned TOP_DARJEELING_ROM_CTRL1_REGS_SIZE_BYTES = 32'h80;
-
-  /**
-   * Peripheral base address for rom device on rom_ctrl1 in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_ROM_CTRL1_ROM_BASE_ADDR = 32'h20000;
-
-  /**
-   * Peripheral size in bytes for rom device on rom_ctrl1 in top darjeeling.
-   */
-  parameter int unsigned TOP_DARJEELING_ROM_CTRL1_ROM_SIZE_BYTES = 32'h10000;
 
   /**
    * Peripheral base address for dma in top darjeeling.
@@ -540,74 +480,74 @@ package top_darjeeling_pkg;
   parameter int unsigned TOP_DARJEELING_RV_CORE_IBEX_CFG_SIZE_BYTES = 32'h800;
 
   /**
-   * Memory base address for ctn in top darjeeling.
+   * Memory base address for ctn memory on soc_proxy in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_CTN_BASE_ADDR = 32'h40000000;
+  parameter int unsigned TOP_DARJEELING_SOC_PROXY_CTN_BASE_ADDR = 32'h40000000;
 
   /**
-   * Memory size for ctn in top darjeeling.
+   * Memory size for ctn memory on soc_proxy in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_CTN_SIZE_BYTES = 32'h80000000;
+  parameter int unsigned TOP_DARJEELING_SOC_PROXY_CTN_SIZE_BYTES = 32'h80000000;
 
   /**
   * Memory base address for ram_ctn in top darjeeling.
   */
-  parameter int unsigned TOP_DARJEELING_RAM_CTN_BASE_ADDR = 32'h41000000;
+  parameter int unsigned TOP_DARJEELING_SOC_PROXY_RAM_CTN_BASE_ADDR = 32'h41000000;
 
   /**
   * Memory size for ram_ctn in top darjeeling.
   */
-  parameter int unsigned TOP_DARJEELING_RAM_CTN_SIZE_BYTES = 32'h100000;
+  parameter int unsigned TOP_DARJEELING_SOC_PROXY_RAM_CTN_SIZE_BYTES = 32'h100000;
 
   /**
-   * Memory base address for ram_ret_aon in top darjeeling.
+   * Memory base address for ram memory on sram_ctrl_ret_aon in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_RAM_RET_AON_BASE_ADDR = 32'h30600000;
+  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_RET_AON_RAM_BASE_ADDR = 32'h30600000;
 
   /**
-   * Memory size for ram_ret_aon in top darjeeling.
+   * Memory size for ram memory on sram_ctrl_ret_aon in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_RAM_RET_AON_SIZE_BYTES = 32'h1000;
+  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_RET_AON_RAM_SIZE_BYTES = 32'h1000;
 
   /**
-   * Memory base address for ram_main in top darjeeling.
+   * Memory base address for ram memory on sram_ctrl_main in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_RAM_MAIN_BASE_ADDR = 32'h10000000;
+  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MAIN_RAM_BASE_ADDR = 32'h10000000;
 
   /**
-   * Memory size for ram_main in top darjeeling.
+   * Memory size for ram memory on sram_ctrl_main in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_RAM_MAIN_SIZE_BYTES = 32'h10000;
+  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MAIN_RAM_SIZE_BYTES = 32'h10000;
 
   /**
-   * Memory base address for ram_mbox in top darjeeling.
+   * Memory base address for ram memory on sram_ctrl_mbox in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_RAM_MBOX_BASE_ADDR = 32'h11000000;
+  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MBOX_RAM_BASE_ADDR = 32'h11000000;
 
   /**
-   * Memory size for ram_mbox in top darjeeling.
+   * Memory size for ram memory on sram_ctrl_mbox in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_RAM_MBOX_SIZE_BYTES = 32'h1000;
+  parameter int unsigned TOP_DARJEELING_SRAM_CTRL_MBOX_RAM_SIZE_BYTES = 32'h1000;
 
   /**
-   * Memory base address for rom0 in top darjeeling.
+   * Memory base address for rom memory on rom_ctrl0 in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_ROM0_BASE_ADDR = 32'h8000;
+  parameter int unsigned TOP_DARJEELING_ROM_CTRL0_ROM_BASE_ADDR = 32'h8000;
 
   /**
-   * Memory size for rom0 in top darjeeling.
+   * Memory size for rom memory on rom_ctrl0 in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_ROM0_SIZE_BYTES = 32'h8000;
+  parameter int unsigned TOP_DARJEELING_ROM_CTRL0_ROM_SIZE_BYTES = 32'h8000;
 
   /**
-   * Memory base address for rom1 in top darjeeling.
+   * Memory base address for rom memory on rom_ctrl1 in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_ROM1_BASE_ADDR = 32'h20000;
+  parameter int unsigned TOP_DARJEELING_ROM_CTRL1_ROM_BASE_ADDR = 32'h20000;
 
   /**
-   * Memory size for rom1 in top darjeeling.
+   * Memory size for rom memory on rom_ctrl1 in top darjeeling.
    */
-  parameter int unsigned TOP_DARJEELING_ROM1_SIZE_BYTES = 32'h10000;
+  parameter int unsigned TOP_DARJEELING_ROM_CTRL1_ROM_SIZE_BYTES = 32'h10000;
 
 
   // Enumeration of alert modules
@@ -684,89 +624,61 @@ package top_darjeeling_pkg;
     TopDarjeelingAlertIdPinmuxAonFatalFault = 19,
     TopDarjeelingAlertIdAonTimerAonFatalFault = 20,
     TopDarjeelingAlertIdSocProxyFatalAlertIntg = 21,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal0 = 22,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal1 = 23,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal2 = 24,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal3 = 25,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal4 = 26,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal5 = 27,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal6 = 28,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal7 = 29,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal8 = 30,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal9 = 31,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal10 = 32,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal11 = 33,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal12 = 34,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal13 = 35,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal14 = 36,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal15 = 37,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal16 = 38,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal17 = 39,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal18 = 40,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal19 = 41,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal20 = 42,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal21 = 43,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal22 = 44,
-    TopDarjeelingAlertIdSocProxyFatalAlertExternal23 = 45,
-    TopDarjeelingAlertIdSocProxyRecovAlertExternal0 = 46,
-    TopDarjeelingAlertIdSocProxyRecovAlertExternal1 = 47,
-    TopDarjeelingAlertIdSocProxyRecovAlertExternal2 = 48,
-    TopDarjeelingAlertIdSocProxyRecovAlertExternal3 = 49,
-    TopDarjeelingAlertIdSramCtrlRetAonFatalError = 50,
-    TopDarjeelingAlertIdRvDmFatalFault = 51,
-    TopDarjeelingAlertIdRvPlicFatalFault = 52,
-    TopDarjeelingAlertIdAesRecovCtrlUpdateErr = 53,
-    TopDarjeelingAlertIdAesFatalFault = 54,
-    TopDarjeelingAlertIdHmacFatalFault = 55,
-    TopDarjeelingAlertIdKmacRecovOperationErr = 56,
-    TopDarjeelingAlertIdKmacFatalFaultErr = 57,
-    TopDarjeelingAlertIdOtbnFatal = 58,
-    TopDarjeelingAlertIdOtbnRecov = 59,
-    TopDarjeelingAlertIdKeymgrDpeRecovOperationErr = 60,
-    TopDarjeelingAlertIdKeymgrDpeFatalFaultErr = 61,
-    TopDarjeelingAlertIdCsrngRecovAlert = 62,
-    TopDarjeelingAlertIdCsrngFatalAlert = 63,
-    TopDarjeelingAlertIdEntropySrcRecovAlert = 64,
-    TopDarjeelingAlertIdEntropySrcFatalAlert = 65,
-    TopDarjeelingAlertIdEdn0RecovAlert = 66,
-    TopDarjeelingAlertIdEdn0FatalAlert = 67,
-    TopDarjeelingAlertIdEdn1RecovAlert = 68,
-    TopDarjeelingAlertIdEdn1FatalAlert = 69,
-    TopDarjeelingAlertIdSramCtrlMainFatalError = 70,
-    TopDarjeelingAlertIdSramCtrlMboxFatalError = 71,
-    TopDarjeelingAlertIdRomCtrl0Fatal = 72,
-    TopDarjeelingAlertIdRomCtrl1Fatal = 73,
-    TopDarjeelingAlertIdDmaFatalFault = 74,
-    TopDarjeelingAlertIdMbx0FatalFault = 75,
-    TopDarjeelingAlertIdMbx0RecovFault = 76,
-    TopDarjeelingAlertIdMbx1FatalFault = 77,
-    TopDarjeelingAlertIdMbx1RecovFault = 78,
-    TopDarjeelingAlertIdMbx2FatalFault = 79,
-    TopDarjeelingAlertIdMbx2RecovFault = 80,
-    TopDarjeelingAlertIdMbx3FatalFault = 81,
-    TopDarjeelingAlertIdMbx3RecovFault = 82,
-    TopDarjeelingAlertIdMbx4FatalFault = 83,
-    TopDarjeelingAlertIdMbx4RecovFault = 84,
-    TopDarjeelingAlertIdMbx5FatalFault = 85,
-    TopDarjeelingAlertIdMbx5RecovFault = 86,
-    TopDarjeelingAlertIdMbx6FatalFault = 87,
-    TopDarjeelingAlertIdMbx6RecovFault = 88,
-    TopDarjeelingAlertIdMbxJtagFatalFault = 89,
-    TopDarjeelingAlertIdMbxJtagRecovFault = 90,
-    TopDarjeelingAlertIdMbxPcie0FatalFault = 91,
-    TopDarjeelingAlertIdMbxPcie0RecovFault = 92,
-    TopDarjeelingAlertIdMbxPcie1FatalFault = 93,
-    TopDarjeelingAlertIdMbxPcie1RecovFault = 94,
-    TopDarjeelingAlertIdSocDbgCtrlFatalFault = 95,
-    TopDarjeelingAlertIdSocDbgCtrlRecovCtrlUpdateErr = 96,
-    TopDarjeelingAlertIdRaclCtrlFatalFault = 97,
-    TopDarjeelingAlertIdRaclCtrlRecovCtrlUpdateErr = 98,
-    TopDarjeelingAlertIdAcRangeCheckRecovCtrlUpdateErr = 99,
-    TopDarjeelingAlertIdAcRangeCheckFatalFault = 100,
-    TopDarjeelingAlertIdRvCoreIbexFatalSwErr = 101,
-    TopDarjeelingAlertIdRvCoreIbexRecovSwErr = 102,
-    TopDarjeelingAlertIdRvCoreIbexFatalHwErr = 103,
-    TopDarjeelingAlertIdRvCoreIbexRecovHwErr = 104,
+    TopDarjeelingAlertIdSramCtrlRetAonFatalError = 22,
+    TopDarjeelingAlertIdRvDmFatalFault = 23,
+    TopDarjeelingAlertIdRvPlicFatalFault = 24,
+    TopDarjeelingAlertIdAesRecovCtrlUpdateErr = 25,
+    TopDarjeelingAlertIdAesFatalFault = 26,
+    TopDarjeelingAlertIdHmacFatalFault = 27,
+    TopDarjeelingAlertIdKmacRecovOperationErr = 28,
+    TopDarjeelingAlertIdKmacFatalFaultErr = 29,
+    TopDarjeelingAlertIdOtbnFatal = 30,
+    TopDarjeelingAlertIdOtbnRecov = 31,
+    TopDarjeelingAlertIdKeymgrDpeRecovOperationErr = 32,
+    TopDarjeelingAlertIdKeymgrDpeFatalFaultErr = 33,
+    TopDarjeelingAlertIdCsrngRecovAlert = 34,
+    TopDarjeelingAlertIdCsrngFatalAlert = 35,
+    TopDarjeelingAlertIdEntropySrcRecovAlert = 36,
+    TopDarjeelingAlertIdEntropySrcFatalAlert = 37,
+    TopDarjeelingAlertIdEdn0RecovAlert = 38,
+    TopDarjeelingAlertIdEdn0FatalAlert = 39,
+    TopDarjeelingAlertIdEdn1RecovAlert = 40,
+    TopDarjeelingAlertIdEdn1FatalAlert = 41,
+    TopDarjeelingAlertIdSramCtrlMainFatalError = 42,
+    TopDarjeelingAlertIdSramCtrlMboxFatalError = 43,
+    TopDarjeelingAlertIdRomCtrl0Fatal = 44,
+    TopDarjeelingAlertIdRomCtrl1Fatal = 45,
+    TopDarjeelingAlertIdDmaFatalFault = 46,
+    TopDarjeelingAlertIdMbx0FatalFault = 47,
+    TopDarjeelingAlertIdMbx0RecovFault = 48,
+    TopDarjeelingAlertIdMbx1FatalFault = 49,
+    TopDarjeelingAlertIdMbx1RecovFault = 50,
+    TopDarjeelingAlertIdMbx2FatalFault = 51,
+    TopDarjeelingAlertIdMbx2RecovFault = 52,
+    TopDarjeelingAlertIdMbx3FatalFault = 53,
+    TopDarjeelingAlertIdMbx3RecovFault = 54,
+    TopDarjeelingAlertIdMbx4FatalFault = 55,
+    TopDarjeelingAlertIdMbx4RecovFault = 56,
+    TopDarjeelingAlertIdMbx5FatalFault = 57,
+    TopDarjeelingAlertIdMbx5RecovFault = 58,
+    TopDarjeelingAlertIdMbx6FatalFault = 59,
+    TopDarjeelingAlertIdMbx6RecovFault = 60,
+    TopDarjeelingAlertIdMbxJtagFatalFault = 61,
+    TopDarjeelingAlertIdMbxJtagRecovFault = 62,
+    TopDarjeelingAlertIdMbxPcie0FatalFault = 63,
+    TopDarjeelingAlertIdMbxPcie0RecovFault = 64,
+    TopDarjeelingAlertIdMbxPcie1FatalFault = 65,
+    TopDarjeelingAlertIdMbxPcie1RecovFault = 66,
+    TopDarjeelingAlertIdSocDbgCtrlFatalFault = 67,
+    TopDarjeelingAlertIdSocDbgCtrlRecovCtrlUpdateErr = 68,
+    TopDarjeelingAlertIdRaclCtrlFatalFault = 69,
+    TopDarjeelingAlertIdRaclCtrlRecovCtrlUpdateErr = 70,
+    TopDarjeelingAlertIdAcRangeCheckRecovCtrlUpdateErr = 71,
+    TopDarjeelingAlertIdAcRangeCheckFatalFault = 72,
+    TopDarjeelingAlertIdRvCoreIbexFatalSwErr = 73,
+    TopDarjeelingAlertIdRvCoreIbexRecovSwErr = 74,
+    TopDarjeelingAlertIdRvCoreIbexFatalHwErr = 75,
+    TopDarjeelingAlertIdRvCoreIbexRecovHwErr = 76,
     TopDarjeelingAlertIdCount
   } alert_id_e;
 
@@ -849,93 +761,61 @@ package top_darjeeling_pkg;
     TopDarjeelingPlicIrqIdPwrmgrAonWakeup = 74,
     TopDarjeelingPlicIrqIdAonTimerAonWkupTimerExpired = 75,
     TopDarjeelingPlicIrqIdAonTimerAonWdogTimerBark = 76,
-    TopDarjeelingPlicIrqIdSocProxyExternal0 = 77,
-    TopDarjeelingPlicIrqIdSocProxyExternal1 = 78,
-    TopDarjeelingPlicIrqIdSocProxyExternal2 = 79,
-    TopDarjeelingPlicIrqIdSocProxyExternal3 = 80,
-    TopDarjeelingPlicIrqIdSocProxyExternal4 = 81,
-    TopDarjeelingPlicIrqIdSocProxyExternal5 = 82,
-    TopDarjeelingPlicIrqIdSocProxyExternal6 = 83,
-    TopDarjeelingPlicIrqIdSocProxyExternal7 = 84,
-    TopDarjeelingPlicIrqIdSocProxyExternal8 = 85,
-    TopDarjeelingPlicIrqIdSocProxyExternal9 = 86,
-    TopDarjeelingPlicIrqIdSocProxyExternal10 = 87,
-    TopDarjeelingPlicIrqIdSocProxyExternal11 = 88,
-    TopDarjeelingPlicIrqIdSocProxyExternal12 = 89,
-    TopDarjeelingPlicIrqIdSocProxyExternal13 = 90,
-    TopDarjeelingPlicIrqIdSocProxyExternal14 = 91,
-    TopDarjeelingPlicIrqIdSocProxyExternal15 = 92,
-    TopDarjeelingPlicIrqIdSocProxyExternal16 = 93,
-    TopDarjeelingPlicIrqIdSocProxyExternal17 = 94,
-    TopDarjeelingPlicIrqIdSocProxyExternal18 = 95,
-    TopDarjeelingPlicIrqIdSocProxyExternal19 = 96,
-    TopDarjeelingPlicIrqIdSocProxyExternal20 = 97,
-    TopDarjeelingPlicIrqIdSocProxyExternal21 = 98,
-    TopDarjeelingPlicIrqIdSocProxyExternal22 = 99,
-    TopDarjeelingPlicIrqIdSocProxyExternal23 = 100,
-    TopDarjeelingPlicIrqIdSocProxyExternal24 = 101,
-    TopDarjeelingPlicIrqIdSocProxyExternal25 = 102,
-    TopDarjeelingPlicIrqIdSocProxyExternal26 = 103,
-    TopDarjeelingPlicIrqIdSocProxyExternal27 = 104,
-    TopDarjeelingPlicIrqIdSocProxyExternal28 = 105,
-    TopDarjeelingPlicIrqIdSocProxyExternal29 = 106,
-    TopDarjeelingPlicIrqIdSocProxyExternal30 = 107,
-    TopDarjeelingPlicIrqIdSocProxyExternal31 = 108,
-    TopDarjeelingPlicIrqIdHmacHmacDone = 109,
-    TopDarjeelingPlicIrqIdHmacFifoEmpty = 110,
-    TopDarjeelingPlicIrqIdHmacHmacErr = 111,
-    TopDarjeelingPlicIrqIdKmacKmacDone = 112,
-    TopDarjeelingPlicIrqIdKmacFifoEmpty = 113,
-    TopDarjeelingPlicIrqIdKmacKmacErr = 114,
-    TopDarjeelingPlicIrqIdOtbnDone = 115,
-    TopDarjeelingPlicIrqIdKeymgrDpeOpDone = 116,
-    TopDarjeelingPlicIrqIdCsrngCsCmdReqDone = 117,
-    TopDarjeelingPlicIrqIdCsrngCsEntropyReq = 118,
-    TopDarjeelingPlicIrqIdCsrngCsHwInstExc = 119,
-    TopDarjeelingPlicIrqIdCsrngCsFatalErr = 120,
-    TopDarjeelingPlicIrqIdEntropySrcEsEntropyValid = 121,
-    TopDarjeelingPlicIrqIdEntropySrcEsHealthTestFailed = 122,
-    TopDarjeelingPlicIrqIdEntropySrcEsObserveFifoReady = 123,
-    TopDarjeelingPlicIrqIdEntropySrcEsFatalErr = 124,
-    TopDarjeelingPlicIrqIdEdn0EdnCmdReqDone = 125,
-    TopDarjeelingPlicIrqIdEdn0EdnFatalErr = 126,
-    TopDarjeelingPlicIrqIdEdn1EdnCmdReqDone = 127,
-    TopDarjeelingPlicIrqIdEdn1EdnFatalErr = 128,
-    TopDarjeelingPlicIrqIdDmaDmaDone = 129,
-    TopDarjeelingPlicIrqIdDmaDmaChunkDone = 130,
-    TopDarjeelingPlicIrqIdDmaDmaError = 131,
-    TopDarjeelingPlicIrqIdMbx0MbxReady = 132,
-    TopDarjeelingPlicIrqIdMbx0MbxAbort = 133,
-    TopDarjeelingPlicIrqIdMbx0MbxError = 134,
-    TopDarjeelingPlicIrqIdMbx1MbxReady = 135,
-    TopDarjeelingPlicIrqIdMbx1MbxAbort = 136,
-    TopDarjeelingPlicIrqIdMbx1MbxError = 137,
-    TopDarjeelingPlicIrqIdMbx2MbxReady = 138,
-    TopDarjeelingPlicIrqIdMbx2MbxAbort = 139,
-    TopDarjeelingPlicIrqIdMbx2MbxError = 140,
-    TopDarjeelingPlicIrqIdMbx3MbxReady = 141,
-    TopDarjeelingPlicIrqIdMbx3MbxAbort = 142,
-    TopDarjeelingPlicIrqIdMbx3MbxError = 143,
-    TopDarjeelingPlicIrqIdMbx4MbxReady = 144,
-    TopDarjeelingPlicIrqIdMbx4MbxAbort = 145,
-    TopDarjeelingPlicIrqIdMbx4MbxError = 146,
-    TopDarjeelingPlicIrqIdMbx5MbxReady = 147,
-    TopDarjeelingPlicIrqIdMbx5MbxAbort = 148,
-    TopDarjeelingPlicIrqIdMbx5MbxError = 149,
-    TopDarjeelingPlicIrqIdMbx6MbxReady = 150,
-    TopDarjeelingPlicIrqIdMbx6MbxAbort = 151,
-    TopDarjeelingPlicIrqIdMbx6MbxError = 152,
-    TopDarjeelingPlicIrqIdMbxJtagMbxReady = 153,
-    TopDarjeelingPlicIrqIdMbxJtagMbxAbort = 154,
-    TopDarjeelingPlicIrqIdMbxJtagMbxError = 155,
-    TopDarjeelingPlicIrqIdMbxPcie0MbxReady = 156,
-    TopDarjeelingPlicIrqIdMbxPcie0MbxAbort = 157,
-    TopDarjeelingPlicIrqIdMbxPcie0MbxError = 158,
-    TopDarjeelingPlicIrqIdMbxPcie1MbxReady = 159,
-    TopDarjeelingPlicIrqIdMbxPcie1MbxAbort = 160,
-    TopDarjeelingPlicIrqIdMbxPcie1MbxError = 161,
-    TopDarjeelingPlicIrqIdRaclCtrlRaclError = 162,
-    TopDarjeelingPlicIrqIdAcRangeCheckDenyCntReached = 163,
+    TopDarjeelingPlicIrqIdHmacHmacDone = 77,
+    TopDarjeelingPlicIrqIdHmacFifoEmpty = 78,
+    TopDarjeelingPlicIrqIdHmacHmacErr = 79,
+    TopDarjeelingPlicIrqIdKmacKmacDone = 80,
+    TopDarjeelingPlicIrqIdKmacFifoEmpty = 81,
+    TopDarjeelingPlicIrqIdKmacKmacErr = 82,
+    TopDarjeelingPlicIrqIdOtbnDone = 83,
+    TopDarjeelingPlicIrqIdKeymgrDpeOpDone = 84,
+    TopDarjeelingPlicIrqIdCsrngCsCmdReqDone = 85,
+    TopDarjeelingPlicIrqIdCsrngCsEntropyReq = 86,
+    TopDarjeelingPlicIrqIdCsrngCsHwInstExc = 87,
+    TopDarjeelingPlicIrqIdCsrngCsFatalErr = 88,
+    TopDarjeelingPlicIrqIdEntropySrcEsEntropyValid = 89,
+    TopDarjeelingPlicIrqIdEntropySrcEsHealthTestFailed = 90,
+    TopDarjeelingPlicIrqIdEntropySrcEsObserveFifoReady = 91,
+    TopDarjeelingPlicIrqIdEntropySrcEsFatalErr = 92,
+    TopDarjeelingPlicIrqIdEdn0EdnCmdReqDone = 93,
+    TopDarjeelingPlicIrqIdEdn0EdnFatalErr = 94,
+    TopDarjeelingPlicIrqIdEdn1EdnCmdReqDone = 95,
+    TopDarjeelingPlicIrqIdEdn1EdnFatalErr = 96,
+    TopDarjeelingPlicIrqIdDmaDmaDone = 97,
+    TopDarjeelingPlicIrqIdDmaDmaChunkDone = 98,
+    TopDarjeelingPlicIrqIdDmaDmaError = 99,
+    TopDarjeelingPlicIrqIdMbx0MbxReady = 100,
+    TopDarjeelingPlicIrqIdMbx0MbxAbort = 101,
+    TopDarjeelingPlicIrqIdMbx0MbxError = 102,
+    TopDarjeelingPlicIrqIdMbx1MbxReady = 103,
+    TopDarjeelingPlicIrqIdMbx1MbxAbort = 104,
+    TopDarjeelingPlicIrqIdMbx1MbxError = 105,
+    TopDarjeelingPlicIrqIdMbx2MbxReady = 106,
+    TopDarjeelingPlicIrqIdMbx2MbxAbort = 107,
+    TopDarjeelingPlicIrqIdMbx2MbxError = 108,
+    TopDarjeelingPlicIrqIdMbx3MbxReady = 109,
+    TopDarjeelingPlicIrqIdMbx3MbxAbort = 110,
+    TopDarjeelingPlicIrqIdMbx3MbxError = 111,
+    TopDarjeelingPlicIrqIdMbx4MbxReady = 112,
+    TopDarjeelingPlicIrqIdMbx4MbxAbort = 113,
+    TopDarjeelingPlicIrqIdMbx4MbxError = 114,
+    TopDarjeelingPlicIrqIdMbx5MbxReady = 115,
+    TopDarjeelingPlicIrqIdMbx5MbxAbort = 116,
+    TopDarjeelingPlicIrqIdMbx5MbxError = 117,
+    TopDarjeelingPlicIrqIdMbx6MbxReady = 118,
+    TopDarjeelingPlicIrqIdMbx6MbxAbort = 119,
+    TopDarjeelingPlicIrqIdMbx6MbxError = 120,
+    TopDarjeelingPlicIrqIdMbxJtagMbxReady = 121,
+    TopDarjeelingPlicIrqIdMbxJtagMbxAbort = 122,
+    TopDarjeelingPlicIrqIdMbxJtagMbxError = 123,
+    TopDarjeelingPlicIrqIdMbxPcie0MbxReady = 124,
+    TopDarjeelingPlicIrqIdMbxPcie0MbxAbort = 125,
+    TopDarjeelingPlicIrqIdMbxPcie0MbxError = 126,
+    TopDarjeelingPlicIrqIdMbxPcie1MbxReady = 127,
+    TopDarjeelingPlicIrqIdMbxPcie1MbxAbort = 128,
+    TopDarjeelingPlicIrqIdMbxPcie1MbxError = 129,
+    TopDarjeelingPlicIrqIdRaclCtrlRaclError = 130,
+    TopDarjeelingPlicIrqIdAcRangeCheckDenyCntReached = 131,
     TopDarjeelingPlicIrqIdCount
   } interrupt_rv_plic_id_e;
 

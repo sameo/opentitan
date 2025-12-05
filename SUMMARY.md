@@ -1,10 +1,12 @@
 - [About OpenTitan](./doc/sections/opentitan.md)
 
   - [Introduction](./README.md)
+  - [OpenTitan News](./doc/project_governance/news.md))
   - [Product Architecture](./doc/productarchitecture.md)
   - [History](./doc/project_governance/history.md)
-  - [Glossary](./doc/glossary.md)
+  - [OpenTitan updates - RFCs](./doc/project_governance/rfc_approved.md)
   - [lowRISC CIC](./doc/project_governance/lowRISC.md)
+  - [Glossary](./doc/glossary.md)
 
 - [Governance and Policies](./doc/sections/governance.md)
 
@@ -12,6 +14,8 @@
   - [Governing Board](./doc/project_governance/governing_board.md)
   - [Technical Committee](./doc/project_governance/technical_committee.md)
   - [Working Groups](./doc/project_governance/working_group.md)
+  - [User accounts](./doc/project_governance/useraccounts.md)
+  - [Trademarks](./doc/project_governance/trademark.md)
   - [Code of Conduct](./doc/project_governance/code_of_conduct.md)
   - [Communication Policy](./doc/project_governance/communications.md)
 
@@ -27,6 +31,7 @@
   - [Introduction](./hw/README.md)
   - [Top Earlgrey](./hw/top_earlgrey/README.md)
     - [Datasheet](./hw/top_earlgrey/doc/datasheet.md)
+    - [Memory Map](./hw/top_earlgrey/doc/memory_map.md)
     - [Design](./hw/top_earlgrey/doc/design/README.md)
     - [Pinout / Pinmux Tables](./hw/top_earlgrey/ip_autogen/pinmux/doc/targets.md)
       - [ASIC](./hw/top_earlgrey/ip_autogen/pinmux/doc/pinout_asic.md)
@@ -142,9 +147,9 @@
 
   - [Top Darjeeling](./hw/top_darjeeling/README.md)
     - [Datasheet](./hw/top_darjeeling/doc/datasheet.md)
+    - [Memory Map](./hw/top_darjeeling/doc/memory_map.md)
     - [Pinout / Pinmux Tables](./hw/top_darjeeling/ip_autogen/pinmux/doc/targets.md)
       - [ASIC](./hw/top_darjeeling/ip_autogen/pinmux/doc/pinout_asic.md)
-      - [CW310](./hw/top_darjeeling/ip_autogen/pinmux/doc/pinout_cw310.md)
     - [AC Range Check](./hw/top_darjeeling/ip_autogen/ac_range_check/README.md)
       - [Theory of Operation](./hw/top_darjeeling/ip_autogen/ac_range_check/doc/theory_of_operation.md)
       - [Design Verification](./hw/top_darjeeling/ip_autogen/ac_range_check/dv/README.md)
@@ -552,6 +557,7 @@
   - [Introduction](./doc/security/README.md)
   - [Cryptography Library](./doc/security/cryptolib/README.md)
     - [API Documentation](./doc/security/cryptolib/cryptolib_api.md)
+    - [Security Hardening](./doc/security/cryptolib/security.md)
     - [Contributing](./doc/security/cryptolib/contributing.md)
   - [Implementation Guidelines](./doc/security/implementation_guidelines/README.md)
     - [Secure Hardware Design Guidelines](./doc/security/implementation_guidelines/hardware/README.md)

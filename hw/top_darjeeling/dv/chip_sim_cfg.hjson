@@ -551,15 +551,6 @@
       reseed: 5
     }
     {
-      name: chip_sw_uart_tx_rx_alt_clk_freq_low_speed
-      uvm_test_seq: chip_sw_uart_rand_baudrate_vseq
-      sw_images: ["//sw/device/tests:uart_tx_rx_test:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-      run_opts: ["+sw_test_timeout_ns=80_000_000",
-                 "+chip_clock_source=ChipClockSourceExternal48Mhz"]
-      reseed: 5
-    }
-    {
       name: chip_sw_i2c_host_tx_rx
       uvm_test_seq: chip_sw_i2c_host_tx_rx_vseq
       sw_images: ["//sw/device/tests/sim_dv:i2c_host_tx_rx_test:6:new_rules"]
@@ -898,12 +889,6 @@
       name: chip_sw_soc_proxy_smoketest
       uvm_test_seq: chip_sw_soc_proxy_smoke_vseq
       sw_images: ["//sw/device/tests:soc_proxy_smoketest:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-    }
-    {
-      name: chip_sw_soc_proxy_external_alerts
-      uvm_test_seq: chip_sw_soc_proxy_external_alerts_vseq
-      sw_images: ["//sw/device/tests:soc_proxy_external_alerts:6:new_rules"]
       en_run_modes: ["sw_test_mode_test_rom"]
     }
     {
@@ -1389,61 +1374,6 @@
       en_run_modes: ["sw_test_mode_test_rom"]
     }
     {
-      name: chip_sw_clkmgr_external_clk_src_for_lc
-      uvm_test_seq: chip_sw_lc_ctrl_transition_vseq
-      sw_images: ["//sw/device/tests/sim_dv:clkmgr_external_clk_src_for_lc_test:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-      run_opts: ["+chip_clock_source=ChipClockSourceExternal48Mhz"]
-    }
-    {
-      name: chip_sw_clkmgr_external_clk_src_for_sw_fast_test_unlocked0
-      uvm_test_seq: chip_sw_lc_base_vseq
-      sw_images: ["//sw/device/tests:clkmgr_external_clk_src_for_sw_fast_test:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-      run_opts: ["+chip_clock_source=ChipClockSourceExternal96Mhz",
-                 "+src_dec_state=DecLcStTestUnlocked0"]
-    }
-    {
-      name: chip_sw_clkmgr_external_clk_src_for_sw_slow_test_unlocked0
-      uvm_test_seq: chip_sw_lc_base_vseq
-      sw_images: ["//sw/device/tests:clkmgr_external_clk_src_for_sw_slow_test:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-      run_opts: ["+chip_clock_source=ChipClockSourceExternal48Mhz",
-                 "+src_dec_state=DecLcStTestUnlocked0"]
-    }
-    {
-      name: chip_sw_clkmgr_external_clk_src_for_sw_fast_dev
-      uvm_test_seq: chip_sw_lc_base_vseq
-      sw_images: ["//sw/device/tests:clkmgr_external_clk_src_for_sw_fast_test:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-      run_opts: ["+chip_clock_source=ChipClockSourceExternal96Mhz",
-                 "+src_dec_state=DecLcStDev"]
-    }
-    {
-      name: chip_sw_clkmgr_external_clk_src_for_sw_slow_dev
-      uvm_test_seq: chip_sw_lc_base_vseq
-      sw_images: ["//sw/device/tests:clkmgr_external_clk_src_for_sw_slow_test:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-      run_opts: ["+chip_clock_source=ChipClockSourceExternal48Mhz",
-                 "+src_dec_state=DecLcStDev"]
-    }
-    {
-      name: chip_sw_clkmgr_external_clk_src_for_sw_fast_rma
-      uvm_test_seq: chip_sw_lc_base_vseq
-      sw_images: ["//sw/device/tests:clkmgr_external_clk_src_for_sw_fast_test:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-      run_opts: ["+chip_clock_source=ChipClockSourceExternal96Mhz",
-                 "+src_dec_state=DecLcStRma"]
-    }
-    {
-      name: chip_sw_clkmgr_external_clk_src_for_sw_slow_rma
-      uvm_test_seq: chip_sw_lc_base_vseq
-      sw_images: ["//sw/device/tests:clkmgr_external_clk_src_for_sw_slow_test:6:new_rules"]
-      en_run_modes: ["sw_test_mode_test_rom"]
-      run_opts: ["+chip_clock_source=ChipClockSourceExternal48Mhz",
-                 "+src_dec_state=DecLcStRma"]
-    }
-    {
       name: chip_sw_clkmgr_reset_frequency
       uvm_test_seq: chip_sw_base_vseq
       sw_images: ["sw/device/tests:clkmgr_reset_frequency_test:6:new_rules"]
@@ -1475,7 +1405,7 @@
     }
     {
       name: chip_sw_ast_clk_outputs
-      uvm_test_seq: chip_sw_ast_clk_outputs_vseq
+      uvm_test_seq: chip_sw_base_vseq
       sw_images: ["//sw/device/tests:ast_clk_outs_test:6:new_rules"]
       en_run_modes: ["sw_test_mode_test_rom"]
     }
@@ -1738,11 +1668,12 @@
               "chip_sw_lc_ctrl_rand_to_scrap"
               "chip_sw_sleep_pin_mio_dio_val",
               // TODO(#26733): uncomment when these run for Darjeeling.
-              // "chip_plic_all_irqs",
+              "chip_plic_all_irqs_0",
+              "chip_plic_all_irqs_10",
               // "chip_sw_kmac_app_rom",
-              // "chip_sw_aes_entropy",
-              // "chip_sw_kmac_mode_cshake",
-              // "chip_sw_kmac_mode_kmac",
+              "chip_sw_aes_entropy",
+              "chip_sw_kmac_mode_cshake",
+              "chip_sw_kmac_mode_kmac",
               // "chip_sw_kmac_mode_kmac_jitter_en",
               // "chip_sw_power_virus",
               // TODO: uncomment when these run with Xcelium.
@@ -1760,10 +1691,9 @@
               "chip_sw_aes_enc",
               "chip_sw_csrng_kat_test",
               // TODO(#26733): uncomment when these run for Darjeeling.
-              // "chip_sw_aes_enc_jitter_en",
-              // "chip_sw_sram_ctrl_scrambled_access",
-              // "chip_rv_dm_ndm_reset_req",
-              // "chip_sw_rstmgr_sw_req",
+              "chip_sw_sram_ctrl_scrambled_access",
+              "chip_rv_dm_ndm_reset_req",
+              "chip_sw_rstmgr_sw_req",
               // "chip_sw_pwrmgr_sleep_disabled",
               // "base_rom_e2e_smoke",
               "chip_sw_aes_idle",

@@ -35,7 +35,6 @@ static size_t keyblob_share_num_bytes(const otcrypto_key_config_t config) {
       return config.key_length + (64 / 8);
     case kOtcryptoKeyTypeRsa:
       // RSA key shares are the same size as the unmasked key.
-      // TODO: update once masking is implemented for RSA keys.
       HARDENED_CHECK_EQ(config.key_mode >> 16, kOtcryptoKeyTypeRsa);
       return config.key_length;
     default:
@@ -103,6 +102,10 @@ status_t keyblob_from_shares(const uint32_t *share0, const uint32_t *share1,
   size_t share_words = keyblob_share_num_words(config);
   HARDENED_TRY(hardened_memcpy(keyblob, share0, share_words));
   HARDENED_TRY(hardened_memcpy(keyblob + share_words, share1, share_words));
+  HARDENED_CHECK_EQ(hardened_memeq(share0, keyblob, share_words),
+                    kHardenedBoolTrue);
+  HARDENED_CHECK_EQ(hardened_memeq(share1, keyblob + share_words, share_words),
+                    kHardenedBoolTrue);
   return OTCRYPTO_OK;
 }
 
@@ -207,11 +210,7 @@ status_t keyblob_from_key_and_mask(const uint32_t *key, const uint32_t *mask,
   // share0 = key ^ mask, share1 = mask
   size_t key_words = keyblob_share_num_words(config);
   uint32_t share0[key_words];
-  size_t i = 0;
-  for (; launder32(i) < key_words; i++) {
-    share0[i] = key[i] ^ mask[i];
-  }
-  HARDENED_CHECK_EQ(i, key_words);
+  HARDENED_TRY(hardened_xor(key, mask, key_words, share0));
 
   return keyblob_from_shares(share0, mask, config, keyblob);
 }

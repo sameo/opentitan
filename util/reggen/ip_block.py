@@ -17,6 +17,7 @@ from reggen.inter_signal import InterSignal
 from reggen.interrupt import Interrupt
 from reggen.lib import (check_bool, check_int, check_keys, check_list,
                         check_name)
+from reggen.memory import Memory
 from reggen.params import LocalParam, ReggenParams
 from reggen.reg_block import RegBlock
 from reggen.signal import Signal
@@ -67,7 +68,7 @@ KNOWN_CIP_IDS = {
     41: 'ac_range_check',
     42: 'soc_dbg_ctrl',
     43: 'racl_ctrl',
-    44: 'prim_otp',
+    44: 'otp_macro',
 }
 
 REQUIRED_ALIAS_FIELDS = {
@@ -86,9 +87,6 @@ REQUIRED_FIELDS = {
     'cip_id': ['d', "unique comportable IP identifier"],
     'clocking': ['l', "clocking for the device"],
     'bus_interfaces': ['l', "bus interfaces for the device"],
-    'registers':
-    ['l', "list of register definition groups and "
-     "offset control groups"]
 }
 
 OPTIONAL_FIELDS = {
@@ -129,6 +127,9 @@ OPTIONAL_FIELDS = {
         "Otherwise this defaults to false."
     ],
     'param_list': ['lp', "list of parameters of the IP"],
+    'registers':
+    ['l', "list of register definition groups and "
+     "offset control groups"],
     'regwidth': ['d', "width of registers in bits (default 32)"],
     'reset_request_list': ['l', 'list of signals requesting reset'],
     'scan': ['pb', 'Indicates the module have `scanmode_i`'],
@@ -143,6 +144,7 @@ OPTIONAL_FIELDS = {
     'wakeup_list': ['lnw', "list of peripheral wakeups"],
     'countermeasures': ["ln", "list of countermeasures in this block"],
     'features': ["ln", "list of functional features in this block"],
+    'memory': ['l', "list of memory definitions"]
 }
 
 # Note that the revisions list may be deprecated in the future.
@@ -168,6 +170,7 @@ class IpBlock:
     regwidth: int
     params: ReggenParams
     reg_blocks: dict[str | None, RegBlock]
+    memories: dict[str, Memory]
     interrupts: Sequence[Interrupt]
     no_auto_intr: bool
     alerts: list[Alert]
@@ -188,7 +191,7 @@ class IpBlock:
     alias_impl: str | None = None
 
     def __post_init__(self) -> None:
-        assert self.reg_blocks
+        assert isinstance(self.reg_blocks, dict)
 
         # Filter the interfaces and reg_blocks if request to build only for a
         # specific reg_block node.
@@ -204,9 +207,14 @@ class IpBlock:
 
         # Check that register blocks are in bijection with device interfaces
         reg_block_names = self.reg_blocks.keys()
+        mem_names = self.memories.keys()
+        # Check that register blocks and memories do not have conflicting names
+        conflicts = set(reg_block_names).intersection(set(mem_names))
+        assert not conflicts, ("the following name(s) appears both in register blocks "
+                               f"and memories: {list(conflicts)}")
         if self.bus_interfaces.has_unnamed_device:
             dev_if_names.append(None)
-        assert set(reg_block_names) == set(dev_if_names)
+        assert set(reg_block_names) | set(mem_names) == set(dev_if_names)
 
     @staticmethod
     def from_raw(param_defaults: list[tuple[str, str]],
@@ -340,8 +348,18 @@ class IpBlock:
         clocking = Clocking.from_raw(rd['clocking'],
                                      'clocking field of ' + what)
 
-        reg_blocks = RegBlock.build_blocks(init_block, rd['registers'],
-                                           bus_interfaces, clocking, False)
+        # Build register block if IP really defined registers. IPs with an empty list of registers
+        # but auto-generated registers should still be built.
+        if "registers" in rd:
+            reg_blocks = RegBlock.build_blocks(init_block, rd["registers"],
+                                               bus_interfaces, clocking, False)
+        else:
+            reg_blocks = {}
+
+        memories = {
+            name: Memory.from_raw(desc)
+            for (name, desc) in rd.get('memory', {}).items()  # type: ignore
+        }
 
         xputs = (Signal.from_raw_list('available_inout_list for block ' + name,
                                       rd.get('available_inout_list', [])),
@@ -366,18 +384,24 @@ class IpBlock:
 
         # Check that register blocks are in bijection with device interfaces
         reg_block_names = reg_blocks.keys()
+        mem_names = memories.keys()
         dev_if_names = []  # type: list[str | None]
         dev_if_names += bus_interfaces.named_devices
         if bus_interfaces.has_unnamed_device:
             dev_if_names.append(None)
-        if set(reg_block_names) != set(dev_if_names):
+
+        conflicts = set(reg_block_names).intersection(set(mem_names))
+        if conflicts:
+            raise ValueError(f"IP block {name} defines some register blocks "
+                             f"and memories with the name: {list(conflicts)}")
+        if set(reg_block_names) | set(mem_names) != set(dev_if_names):
             raise ValueError("IP block {} defines device interfaces, named {} "
                              "but its registers don't match (they are keyed "
                              "by {}).".format(name, dev_if_names,
                                               list(reg_block_names)))
 
         return IpBlock(name, cip_id, version, regwidth, params, reg_blocks,
-                       interrupts, no_auto_intr, alerts, no_auto_alert,
+                       memories, interrupts, no_auto_intr, alerts, no_auto_alert,
                        scan, inter_signals, bus_interfaces, clocking, xputs,
                        wakeups, rst_reqs, expose_reg_if, scan_reset, scan_en,
                        countermeasures, features, node)

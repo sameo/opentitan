@@ -12,9 +12,6 @@
 module ast
   import ast_pkg::EntropyStreams;
 #(
-  parameter int unsigned AdcChannels     = 2,
-  parameter int unsigned AdcDataWidth    = 10,
-  parameter int unsigned UsbCalibWidth   = 20,
   parameter int unsigned Ast2PadOutWidth = 9,
   parameter int unsigned Pad2AstInWidth  = 9
 ) (
@@ -24,17 +21,12 @@ module ast
   output prim_mubi_pkg::mubi4_t ast_init_done_o,  // AST (registers) Init Done
 
   // clocks / resets
-  input clk_ast_adc_i,                        // Buffered AST ADC Clock
-  input rst_ast_adc_ni,                       // Buffered AST ADC Reset
   input clk_ast_alert_i,                      // Buffered AST Alert Clock
   input rst_ast_alert_ni,                     // Buffered AST Alert Reset
   input clk_ast_rng_i,                        // Buffered AST RNG Clock
   input rst_ast_rng_ni,                       // Buffered AST RNG Reset
   input clk_ast_tlul_i,                       // Buffered AST TLUL Clock
   input rst_ast_tlul_ni,                      // Buffered AST TLUL Reset
-  input clk_ast_usb_i,                        // Buffered AST USB Clock
-  input rst_ast_usb_ni,                       // Buffered AST USB Reset
-  input clk_ast_ext_i,                        // Buffered AST External Clock
   input por_ni,                               // Power ON Reset
 
   // sensed clocks / resets
@@ -64,8 +56,6 @@ module ast
   input main_env_iso_en_i,                    // Enveloped ISOlation ENable for MAIN
 
   // power down monitor logic - flash/otp related
-  output logic flash_power_down_h_o,          // Flash Power Down
-  output logic flash_power_ready_h_o,         // Flash Power Ready
   input [1:0] otp_power_seq_i,                // MMR0,24 in (VDD)
   output logic [1:0] otp_power_seq_h_o,       // MMR0,24 masked by PDM, out (VCC)
 
@@ -83,23 +73,6 @@ module ast
   input clk_src_io_en_i,                      // IO Source Clock Enable
   output logic clk_src_io_o,                  // IO Source Clock
   output logic clk_src_io_val_o,              // IO Source Clock Valid
-  output prim_mubi_pkg::mubi4_t clk_src_io_48m_o,  // IO Source Clock is 48MHz
-
-  // usb source clock
-  input usb_ref_pulse_i,                      // USB Reference Pulse
-  input usb_ref_val_i,                        // USB Reference Valid
-  input clk_src_usb_en_i,                     // USB Source Clock Enable
-  output logic clk_src_usb_o,                 // USB Source Clock
-  output logic clk_src_usb_val_o,             // USB Source Clock Valid
-  output logic [UsbCalibWidth-1:0] usb_io_pu_cal_o,  // USB IO Pull-up Calibration Setting
-
-  // adc interface
-  input adc_pd_i,                             // ADC Power Down
-  input ast_pkg::awire_t adc_a0_ai,           // ADC A0 Analog Input
-  input ast_pkg::awire_t adc_a1_ai,           // ADC A1 Analog Input
-  input [AdcChannels-1:0] adc_chnsel_i,       // ADC Channel Select
-  output [AdcDataWidth-1:0] adc_d_o,          // ADC Digital (per channel)
-  output adc_d_val_o,                         // ADC Digital Valid
 
   // rng (entropy source) interface
   input rng_en_i,                             // RNG Enable
@@ -113,10 +86,8 @@ module ast
 
   // dft interface
   input lc_ctrl_pkg::lc_tx_t lc_dft_en_i,     // DFT enable (secure bus)
-  input [8-1:0] fla_obs_i,                    // FLASH Observe Bus
   input [8-1:0] otp_obs_i,                    // OTP Observe Bus
   input [8-1:0] otm_obs_i,                    // OT Modules Observe Bus
-  input usb_obs_i,                            // USB DIFF RX Observe
   output ast_pkg::ast_obs_ctrl_t obs_ctrl_o,  // Observe Control
 
   // pad mux/pad related
@@ -130,14 +101,6 @@ module ast
   output wire ast2pad_t0_ao,                  // AST_2_PAD Analog T0 Output Signal
   output wire ast2pad_t1_ao,                  // AST_2_PAD Analog T1 Output Signal
 `endif
-
-  // flash and external clocks
-  input prim_mubi_pkg::mubi4_t ext_freq_is_96m_i,   // External clock frequency is 96MHz
-  input prim_mubi_pkg::mubi4_t all_clk_byp_req_i,   // All clocks bypass request
-  output prim_mubi_pkg::mubi4_t all_clk_byp_ack_o,  // Switch all clocks to External clocks
-  input prim_mubi_pkg::mubi4_t io_clk_byp_req_i,    // IO clock bypass request (for OTP bootstrap)
-  output prim_mubi_pkg::mubi4_t io_clk_byp_ack_o,   // Switch IO clock to External clock
-  output prim_mubi_pkg::mubi4_t flash_bist_en_o,    // Flush BIST (TAP) Enable
 
   // memories read-write margins
   output ast_pkg::dpm_rm_t dpram_rmf_o,       // Dual Port RAM Read-write Margin Fast
@@ -159,7 +122,7 @@ import ast_bhv_pkg::* ;
 logic scan_mode, shift_en, scan_reset_n;
 logic vcc_pok, vcc_pok_h, vcc_pok_str;
 logic vcaon_pok, vcaon_pok_h, vcmain_pok;
-logic vcaon_pok_por, vcmain_pok_por;
+logic vcmain_pok_por;
 
 // Local (AST) System clock buffer
 ////////////////////////////////////////
@@ -183,9 +146,6 @@ prim_clock_buf #(
   .clk_o ( clk_aon )
 );
 
-
-assign flash_bist_en_o  = prim_mubi_pkg::MuBi4False;
-//
 assign dft_scan_md_o    = prim_mubi_pkg::MuBi4False;
 assign scan_shift_en_o  = 1'b0;
 assign scan_reset_no    = 1'b1;
@@ -251,7 +211,6 @@ prim_flop #(
 // Replace Latch for the OS code
 assign vcaon_pok_por_lat = rglssm_brout || por_sync_n;
 assign ast_pwst_o.aon_pok = vcaon_pok_por_lat;
-assign vcaon_pok_por = scan_mode ? scan_reset_n : vcaon_pok_por_lat;
 
 
 ////////////////////////////////////////
@@ -325,8 +284,6 @@ rglts_pdm_3p3v u_rglts_pdm_3p3v (
   .vcc_pok_str_h_o ( ast_pwst_h_o.vcc_pok ),
   .vcc_pok_str_1p1_h_o ( vcc_pok_str ),
   .deep_sleep_h_o ( deep_sleep ),
-  .flash_power_down_h_o ( flash_power_down_h_o ),
-  .flash_power_ready_h_o ( flash_power_ready_h_o ),
   .otp_power_seq_h_o ( otp_power_seq_h_o[2-1:0] )
 );
 
@@ -339,12 +296,13 @@ assign ast_pwst_o.vcc_pok = vcc_pok_str;
 ///////////////////////////////////////
 ///////////////////////////////////////
 
+logic clk_src_sys, clk_src_io, clk_src_aon;
 
 ///////////////////////////////////////
 // System Clock (Always ON)
 ///////////////////////////////////////
 logic rst_sys_clk_n, clk_sys_pd_n;
-logic clk_sys_en, clk_osc_sys, clk_osc_sys_val;
+logic clk_sys_en;
 prim_mubi_pkg::mubi4_t clk_src_sys_jen;
 
 assign rst_sys_clk_n = vcmain_pok_por && vcc_pok;
@@ -370,48 +328,8 @@ sys_clk u_sys_clk (
 `ifdef AST_BYPASS_CLK
   .clk_sys_ext_i ( clk_sys_ext ),
 `endif
-  .clk_src_sys_o ( clk_osc_sys ),
-  .clk_src_sys_val_o ( clk_osc_sys_val )
-);
-
-
-///////////////////////////////////////
-// USB Clock (Always ON)
-///////////////////////////////////////
-logic rst_usb_clk_n, clk_usb_pd_n;
-logic clk_usb_en, clk_osc_usb, clk_osc_usb_val;
-logic usb_ref_val, usb_ref_pulse;
-
-assign rst_usb_clk_n = vcmain_pok_por && vcc_pok;
-assign clk_usb_pd_n  = scan_mode || !deep_sleep;
-
-logic usb_osc_cal;
-
-`ifdef AST_BYPASS_CLK
-logic clk_usb_ext;
-assign clk_usb_ext = clk_osc_byp_i.usb;
-`endif
-
-assign clk_usb_en = clk_src_usb_en_i;
-assign usb_ref_val = usb_ref_val_i;
-assign usb_ref_pulse = usb_ref_pulse_i;
-
-usb_clk u_usb_clk (
-  .vcore_pok_h_i ( vcaon_pok_h ),
-  .clk_usb_pd_ni ( clk_usb_pd_n ),
-  .rst_usb_clk_ni ( rst_usb_clk_n ),
-  .clk_src_usb_en_i ( clk_usb_en ),
-  .usb_ref_val_i ( usb_ref_val ),
-  .usb_ref_pulse_i ( usb_ref_pulse ),
-  .clk_ast_usb_i ( clk_ast_usb_i ),
-  .rst_ast_usb_ni ( rst_ast_usb_ni ),
-  .scan_mode_i ( scan_mode ),
-  .usb_osc_cal_i ( usb_osc_cal ),
-`ifdef AST_BYPASS_CLK
-  .clk_usb_ext_i ( clk_usb_ext ),
-`endif
-  .clk_src_usb_o ( clk_osc_usb ),
-  .clk_src_usb_val_o ( clk_osc_usb_val )
+  .clk_src_sys_o ( clk_src_sys ),
+  .clk_src_sys_val_o ( clk_src_sys_val_o )
 );
 
 
@@ -419,7 +337,7 @@ usb_clk u_usb_clk (
 // AON Clock (Always ON)
 ///////////////////////////////////////
 logic rst_aon_clk_n;
-logic clk_src_aon_en, clk_osc_aon, clk_osc_aon_val;
+logic clk_src_aon_en;
 logic aon_osc_cal;
 
 `ifdef AST_BYPASS_CLK
@@ -440,8 +358,8 @@ aon_clk  u_aon_clk (
 `ifdef AST_BYPASS_CLK
   .clk_aon_ext_i ( clk_aon_ext ),
 `endif
-  .clk_src_aon_o ( clk_osc_aon ),
-  .clk_src_aon_val_o ( clk_osc_aon_val )
+  .clk_src_aon_o ( clk_src_aon ),
+  .clk_src_aon_val_o ( clk_src_aon_val_o )
 );
 
 logic vcmpp_aon_sync_n, rst_vcmpp_aon_n;
@@ -459,12 +377,11 @@ prim_flop_2sync #(
 
 assign rst_vcmpp_aon_n = scan_mode ? scan_reset_n : vcmpp_aon_sync_n;
 
-
 ///////////////////////////////////////
 // IO Clock (Always ON)
 ///////////////////////////////////////
 logic rst_io_clk_n, clk_io_pd_n;
-logic clk_src_io_en, clk_osc_io, clk_osc_io_val;
+logic clk_src_io_en;
 
 assign rst_io_clk_n = vcmain_pok_por && vcc_pok;
 assign clk_io_pd_n  = scan_mode || !deep_sleep;
@@ -486,52 +403,8 @@ io_clk u_io_clk (
 `ifdef AST_BYPASS_CLK
   .clk_io_ext_i ( clk_io_ext ),
 `endif
-  .clk_src_io_o ( clk_osc_io ),
-  .clk_src_io_val_o ( clk_osc_io_val )
-);
-
-
-///////////////////////////////////////
-// AST Clocks Bypass
-///////////////////////////////////////
-logic clk_src_sys, clk_src_io, clk_src_usb, clk_src_aon;
-
-ast_clks_byp u_ast_clks_byp (
-  .vcaon_pok_i ( vcaon_pok ),
-  .vcaon_pok_por_i ( vcaon_pok_por ),
-  .deep_sleep_i ( deep_sleep ),
-  .clk_src_sys_en_i ( clk_src_sys_en_i ),
-  .clk_osc_sys_i ( clk_osc_sys ),
-  .clk_osc_sys_val_i ( clk_osc_sys_val ),
-  .clk_src_io_en_i ( clk_src_io_en_i ),
-  .clk_osc_io_i ( clk_osc_io ),
-  .clk_osc_io_val_i ( clk_osc_io_val ),
-  .clk_src_usb_en_i ( clk_src_usb_en_i ),
-  .clk_osc_usb_i ( clk_osc_usb ),
-  .clk_osc_usb_val_i ( clk_osc_usb_val ),
-  .clk_osc_aon_i ( clk_osc_aon ),
-  .clk_osc_aon_val_i ( clk_osc_aon_val ),
-  .clk_ast_ext_i ( clk_ast_ext_i ),
-`ifdef AST_BYPASS_CLK
-  .clk_ext_sys_i( clk_sys_ext ),
-  .clk_ext_io_i( clk_io_ext ),
-  .clk_ext_usb_i( clk_usb_ext ),
-  .clk_ext_aon_i( clk_aon_ext ),
-`endif
-  .io_clk_byp_req_i ( io_clk_byp_req_i ),
-  .all_clk_byp_req_i ( all_clk_byp_req_i ),
-  .ext_freq_is_96m_i ( ext_freq_is_96m_i ),
-  .io_clk_byp_ack_o ( io_clk_byp_ack_o ),
-  .all_clk_byp_ack_o ( all_clk_byp_ack_o ),
-  .clk_src_sys_o ( clk_src_sys ),
-  .clk_src_sys_val_o ( clk_src_sys_val_o ),
   .clk_src_io_o ( clk_src_io ),
-  .clk_src_io_val_o ( clk_src_io_val_o ),
-  .clk_src_io_48m_o ( clk_src_io_48m_o ),
-  .clk_src_usb_o ( clk_src_usb ),
-  .clk_src_usb_val_o ( clk_src_usb_val_o ),
-  .clk_src_aon_o ( clk_src_aon ),
-  .clk_src_aon_val_o ( clk_src_aon_val_o )
+  .clk_src_io_val_o ( clk_src_io_val_o )
 );
 
 // System source clock buffer
@@ -552,15 +425,6 @@ prim_clock_buf #(
   .clk_o ( clk_src_io_o )
 );
 
-// USB source clock buffer
-////////////////////////////////////////
-prim_clock_buf #(
-  .NoFpgaBuf ( 1'b1 )
-) u_clk_src_usb_buf (
-  .clk_i ( clk_src_usb ),
-  .clk_o ( clk_src_usb_o )
-);
-
 // AON source clock buffer
 ////////////////////////////////////////
 prim_clock_buf #(
@@ -569,26 +433,6 @@ prim_clock_buf #(
   .clk_i ( clk_src_aon ),
   .clk_o ( clk_src_aon_o )
 );
-
-
-///////////////////////////////////////
-// ADC (Always ON)
-///////////////////////////////////////
-adc #(
-  .AdcCnvtClks ( AdcCnvtClks ),
-  .AdcChannels ( AdcChannels ),
-  .AdcDataWidth ( AdcDataWidth )
-) u_adc (
-  .adc_a0_ai ( adc_a0_ai ),
-  .adc_a1_ai ( adc_a1_ai ),
-  .adc_chnsel_i ( adc_chnsel_i[AdcChannels-1:0] ),
-  .adc_pd_i ( adc_pd_i ),
-  .clk_adc_i ( clk_ast_adc_i ),
-  .rst_adc_ni ( rst_ast_adc_ni ),
-  .adc_d_o ( adc_d_o[AdcDataWidth-1:0] ),
-  .adc_d_val_o ( adc_d_val_o )
-);
-
 
 ///////////////////////////////////////
 // Entropy (Always ON)
@@ -877,14 +721,6 @@ always_ff @( posedge clk_ast_tlul_i, negedge rst_ast_tlul_ni ) begin
   end
 end
 
-always_ff @( posedge clk_ast_tlul_i, negedge vcaon_pok_por ) begin
-  if ( !vcaon_pok_por ) begin
-    usb_osc_cal <= 1'b0;
-  end else if ( regal_we ) begin
-    usb_osc_cal <= 1'b1;
-  end
-end
-
 always_ff @( posedge clk_ast_tlul_i, negedge vcaon_pok ) begin
   if ( !vcaon_pok ) begin
     aon_osc_cal <= 1'b0;
@@ -895,9 +731,6 @@ end
 
 // TLUL Integrity Error
 assign ot0_alert_src = '{p: intg_err, n: !intg_err};
-
-// USB PU-P and PU-N value selection
-assign usb_io_pu_cal_o = UsbCalibWidth'(1 << (UsbCalibWidth[5-1:0]/2));
 
 
 ///////////////////////////////////////
@@ -935,18 +768,9 @@ assign ast2pad_t1_ao = 1'bz;
 `ASSERT_KNOWN(ClkSrcAonValKnownO_A, clk_src_aon_val_o, clk_src_aon_o, rst_aon_clk_n)
 `ASSERT_KNOWN(ClkSrcIoKnownO_A, clk_src_io_o, 1, ast_pwst_o.main_pok)
 `ASSERT_KNOWN(ClkSrcIoValKnownO_A, clk_src_io_val_o, clk_src_io_o, rst_io_clk_n)
-`ASSERT_KNOWN(ClkSrcIo48mKnownO_A, clk_src_io_48m_o, clk_src_io_o, rst_io_clk_n)
 `ASSERT_KNOWN(ClkSrcSysKnownO_A, clk_src_sys_o, 1, ast_pwst_o.main_pok)
 `ASSERT_KNOWN(ClkSrcSysValKnownO_A, clk_src_sys_val_o, clk_src_sys_o, rst_sys_clk_n)
-`ASSERT_KNOWN(ClkSrcUsbKnownO_A, clk_src_usb_o, 1, ast_pwst_o.main_pok)
-`ASSERT_KNOWN(ClkSrcUsbValKnownO_A, clk_src_usb_val_o, clk_src_usb_o, rst_usb_clk_n)
 //
-`ASSERT_KNOWN(UsbIoPuCalKnownO_A, usb_io_pu_cal_o, clk_ast_tlul_i, ast_pwst_o.aon_pok)
-`ASSERT_KNOWN(LcClkBypAckEnKnownO_A, io_clk_byp_ack_o, clk_ast_tlul_i, rst_ast_tlul_ni)
-`ASSERT_KNOWN(AllClkBypAckEnKnownO_A, all_clk_byp_ack_o, clk_ast_tlul_i, rst_ast_tlul_ni)
-// ADC
-`ASSERT_KNOWN(AdcDKnownO_A, adc_d_o, clk_ast_adc_i, rst_ast_adc_ni)
-`ASSERT_KNOWN(AdcDValKnownO_A, adc_d_val_o, clk_ast_adc_i, rst_ast_adc_ni)
 // RNG
 `ASSERT_KNOWN(RngBKnownO_A, rng_b_o, clk_ast_rng_i, rst_ast_rng_ni)
 `ASSERT_KNOWN(RngValKnownO_A, rng_val_o, clk_ast_rng_i, rst_ast_rng_ni)
@@ -965,8 +789,6 @@ assign ast2pad_t1_ao = 1'bz;
 `ASSERT_KNOWN(VioaPokHKnownO_A, ast_pwst_h_o.io_pok[0], clk_src_aon_o, por_ni)
 `ASSERT_KNOWN(ViobPokHKnownO_A, ast_pwst_h_o.io_pok[1], clk_src_aon_o, por_ni)
 // FLASH/OTP
-`ASSERT_KNOWN(FlashPowerDownKnownO_A, flash_power_down_h_o, 1, ast_pwst_o.main_pok)
-`ASSERT_KNOWN(FlashPowerReadyKnownO_A, flash_power_ready_h_o, 1, ast_pwst_o.main_pok)
 `ASSERT_KNOWN(OtpPowerSeqKnownO_A, otp_power_seq_h_o, 1, ast_pwst_o.main_pok)
 // Alerts
 `ASSERT_KNOWN(AlertReqKnownO_A, alert_req_o, clk_ast_alert_i, rst_ast_alert_ni)
@@ -982,7 +804,6 @@ assign ast2pad_t1_ao = 1'bz;
 `ASSERT_KNOWN(DftScanMdKnownO_A, dft_scan_md_o, clk_ast_tlul_i, ast_pwst_o.aon_pok)
 `ASSERT_KNOWN(ScanShiftEnKnownO_A, scan_shift_en_o, clk_ast_tlul_i, ast_pwst_o.aon_pok)
 `ASSERT_KNOWN(ScanResetKnownO_A, scan_reset_no, clk_ast_tlul_i, ast_pwst_o.aon_pok)
-`ASSERT_KNOWN(FlashBistEnKnownO_A, flash_bist_en_o, clk_ast_tlul_i, ast_pwst_o.aon_pok)
 
 // Alert assertions for reg_we onehot check
 `ASSERT_PRIM_REG_WE_ONEHOT_ERROR_TRIGGER_ERR(RegWeOnehot_A,
@@ -994,9 +815,7 @@ assign ast2pad_t1_ao = 1'bz;
 /////////////////////
 logic unused_sigs;
 
-assign unused_sigs = ^{ clk_ast_usb_i,
-                        rst_ast_usb_ni,
-                        sns_spi_ext_clk_i,
+assign unused_sigs = ^{ sns_spi_ext_clk_i,
                         sns_clks_i,
                         sns_rsts_i,
                         intg_err,
@@ -1005,10 +824,8 @@ assign unused_sigs = ^{ clk_ast_usb_i,
                         rst_vcmpp_aon_n,
                         padmux2ast_i[Pad2AstInWidth-1:0],
                         lc_dft_en_i[3:0],
-                        fla_obs_i[8-1:0],
                         otp_obs_i[8-1:0],
                         otm_obs_i[8-1:0],
-                        usb_obs_i,
                         reg2hw.rega0,
                         reg2hw.rega1,
                         reg2hw.rega2,

@@ -50,7 +50,7 @@ impl CommandDispatch for AssembleCommand {
         &self,
         _context: &dyn Any,
         _transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         let mut image = ImageAssembler::with_params(self.size, self.mirror);
         // Filter out empty arguments that could appear e.g. because of bazel
         // and also trim extra spaces if necessary.
@@ -77,7 +77,7 @@ pub struct ManifestShowCommand {
     image: PathBuf,
 }
 
-#[derive(Debug, serde::Serialize, Annotate)]
+#[derive(Debug, Annotate)]
 pub struct ManifestShowResult {
     #[annotate(format=hex)]
     kind: ManifestKind,
@@ -91,7 +91,7 @@ impl CommandDispatch for ManifestShowCommand {
         &self,
         _context: &dyn Any,
         _transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         let image = image::Image::read_from_file(&self.image)?;
         let result = image
             .subimages()?
@@ -147,6 +147,9 @@ pub struct ManifestUpdateCommand {
     /// The signature domain (None, Pure, PreHashedSha256)
     #[arg(long, default_value_t = SpxDomain::default())]
     domain: SpxDomain,
+    /// Set to true if the firmware uses a byte-reversed representation of the hash.
+    #[arg(long, action = clap::ArgAction::Set, default_value = "false")]
+    spx_hash_reversal_bug: bool,
     /// Filename to write the output to instead of updating the input file.
     #[arg(short, long)]
     output: Option<PathBuf>,
@@ -177,7 +180,7 @@ impl CommandDispatch for ManifestUpdateCommand {
         &self,
         _context: &dyn Any,
         _transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         let mut image = image::Image::read_from_file(&self.image)?;
         let mut update_length = self.update_length;
 
@@ -308,7 +311,12 @@ impl CommandDispatch for ManifestUpdateCommand {
                     image.map_signed_region(|buf| key.sign(self.domain, buf))??
                 }
                 SpxDomain::PreHashedSha256 => {
-                    let digest = image.compute_digest()?.to_le_bytes();
+                    let digest = image.compute_digest()?;
+                    let digest = if self.spx_hash_reversal_bug {
+                        digest.to_vec_rev()
+                    } else {
+                        digest.to_vec()
+                    };
                     key.sign(self.domain, &digest)?
                 }
             };
@@ -356,6 +364,9 @@ pub struct ManifestVerifyCommand {
     /// The SPX signature domain (None, Pure, PreHashedSha256)
     #[arg(long, default_value_t = SpxDomain::default())]
     domain: SpxDomain,
+    /// The SPX signature was created with a reversed hash.
+    #[arg(long, default_value_t = false)]
+    spx_hash_reversal_bug: bool,
 }
 
 impl CommandDispatch for ManifestVerifyCommand {
@@ -363,13 +374,14 @@ impl CommandDispatch for ManifestVerifyCommand {
         &self,
         _context: &dyn Any,
         _transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         let image = image::Image::read_from_file(&self.image)?;
-
-        let digest = Sha256Digest::from_le_bytes(image.compute_digest()?.to_le_bytes())?;
+        let digest = image.compute_digest()?;
 
         // Verify signature.
-        let sigverify_params = image.get_sigverify_params_from_manifest()?;
+        let sigverify_params = image
+            .get_sigverify_params_from_manifest()?
+            .with_hash_reversal_bug(self.spx_hash_reversal_bug);
         sigverify_params.verify(&digest)?;
 
         if self.spx {
@@ -400,11 +412,10 @@ pub struct DigestCommand {
 }
 
 /// Response format for the digest command.
-#[derive(serde::Serialize, Annotate)]
+#[derive(Annotate)]
 pub struct DigestResponse {
-    #[serde(with = "serde_bytes")]
     #[annotate(comment = "SHA256 Digest excluding the image signature bytes", format = hexstr)]
-    pub digest: Vec<u8>,
+    pub digest: Sha256Digest,
 }
 
 impl CommandDispatch for DigestCommand {
@@ -412,16 +423,14 @@ impl CommandDispatch for DigestCommand {
         &self,
         _context: &dyn Any,
         _transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         let image = image::Image::read_from_file(&self.image)?;
         let digest = image.compute_digest()?;
         if let Some(bin) = &self.bin {
             let mut file = File::create(bin)?;
-            file.write_all(&digest.to_le_bytes())?;
+            file.write_all(digest.as_ref())?;
         }
-        Ok(Some(Box::new(DigestResponse {
-            digest: digest.to_be_bytes(),
-        })))
+        Ok(Some(Box::new(DigestResponse { digest })))
     }
 }
 
@@ -440,7 +449,7 @@ impl CommandDispatch for SpxMessageCommand {
         &self,
         _context: &dyn Any,
         _transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         let image = image::Image::read_from_file(&self.image)?;
         let mut output = File::create(&self.output)?;
         // Note: the closure returns a Result R, and map_signed region

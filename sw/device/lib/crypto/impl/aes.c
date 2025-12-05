@@ -13,6 +13,7 @@
 #include "sw/device/lib/crypto/drivers/keymgr.h"
 #include "sw/device/lib/crypto/impl/integrity.h"
 #include "sw/device/lib/crypto/impl/keyblob.h"
+#include "sw/device/lib/crypto/impl/security_config.h"
 #include "sw/device/lib/crypto/impl/status.h"
 #include "sw/device/lib/crypto/include/datatypes.h"
 
@@ -246,7 +247,9 @@ static status_t get_block(otcrypto_const_byte_buf_t input,
     HARDENED_CHECK_LT(index, num_full_blocks);
     // No need to worry about padding, just copy the data into the output
     // block.
-    // TODO(#17711) Change to `hardened_memcpy`.
+    // Byte buffers passed as input may not be word-aligned, so we cannot
+    // use `hardened_memcpy`.
+    // This is acceptable because the data is non-sensitive.
     memcpy(block->data, &input.data[index * kAesBlockNumBytes],
            kAesBlockNumBytes);
     return OTCRYPTO_OK;
@@ -296,6 +299,12 @@ static otcrypto_status_t otcrypto_aes_impl(
       cipher_input.data == NULL || cipher_output.data == NULL) {
     return OTCRYPTO_BAD_ARGS;
   }
+
+  // Check the security config of the device.
+  HARDENED_TRY(security_config_check(key->config.security_level));
+
+  // Ensure the entropy complex is initialized.
+  HARDENED_TRY(entropy_complex_check());
 
   // Calculate the number of blocks for the input, including the padding for
   // encryption.
@@ -407,7 +416,9 @@ static otcrypto_status_t otcrypto_aes_impl(
     HARDENED_TRY(get_block(cipher_input, aes_padding, i, &block_in));
     HARDENED_TRY(hardened_memshred(block_out.data, ARRAYSIZE(block_out.data)));
     HARDENED_TRY(aes_update(&block_out, &block_in));
-    // TODO(#17711) Change to `hardened_memcpy`.
+    // Byte buffers passed as input may not be word-aligned, so we cannot
+    // use `hardened_memcpy`.
+    // This is acceptable because the data is non-sensitive.
     memcpy(&cipher_output.data[(i - block_offset) * kAesBlockNumBytes],
            block_out.data, kAesBlockNumBytes);
   }
@@ -418,7 +429,9 @@ static otcrypto_status_t otcrypto_aes_impl(
   // input).
   for (i = block_offset; i > 0; --i) {
     HARDENED_TRY(aes_update(&block_out, /*src=*/NULL));
-    // TODO(#17711) Change to `hardened_memcpy`.
+    // Byte buffers passed as input may not be word-aligned, so we cannot
+    // use `hardened_memcpy`.
+    // This is acceptable because the data is non-sensitive.
     memcpy(&cipher_output.data[(input_nblocks - i) * kAesBlockNumBytes],
            block_out.data, kAesBlockNumBytes);
   }
@@ -517,8 +530,7 @@ otcrypto_status_t otcrypto_aes(otcrypto_blinded_key_t *key,
 
     // Comparison.
     HARDENED_CHECK_EQ(
-        hardened_memeq((const uint32_t *)cipher_input.data, output_buf,
-                       cipher_input.len / sizeof(uint32_t)),
+        consttime_memeq_byte(cipher_input.data, output_buf, cipher_input.len),
         kHardenedBoolTrue);
   }
 

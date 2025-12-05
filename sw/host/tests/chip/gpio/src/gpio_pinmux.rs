@@ -11,7 +11,6 @@ use anyhow::Result;
 use clap::Parser;
 
 use opentitanlib::app::TransportWrapper;
-use opentitanlib::dif::pinmux::PinmuxPadAttr;
 use opentitanlib::execute_test;
 use opentitanlib::io::gpio::{PinMode, PullMode};
 use opentitanlib::io::uart::Uart;
@@ -19,10 +18,8 @@ use opentitanlib::test_utils::gpio::{GpioGet, GpioSet};
 use opentitanlib::test_utils::init::InitializeTest;
 use opentitanlib::test_utils::pinmux_config::PinmuxConfig;
 use opentitanlib::uart::console::UartConsole;
-
-use opentitanlib::chip::autogen::earlgrey::{
-    PinmuxInsel, PinmuxMioOut, PinmuxOutsel, PinmuxPeripheralIn,
-};
+use ot_hal::dif::pinmux::PinmuxPadAttr;
+use ot_hal::top::earlgrey::{PinmuxInsel, PinmuxMioOut, PinmuxOutsel, PinmuxPeripheralIn};
 
 #[derive(Debug, Parser)]
 struct Opts {
@@ -391,7 +388,7 @@ fn main() -> Result<()> {
 
     let uart = transport.uart("console")?;
     uart.set_flow_control(true)?;
-    let _ = UartConsole::wait_for(&*uart, r"Running [^\r\n]*", opts.timeout)?;
+    let _ = UartConsole::wait_for(&*uart, r"Running ", opts.timeout)?;
 
     execute_test!(test_gpio_outputs, &transport, &config);
     execute_test!(test_gpio_inputs, &transport, &config);

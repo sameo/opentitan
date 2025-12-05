@@ -496,13 +496,13 @@ interface chip_if;
   clk_rst_if aon_clk_por_rst_if(.clk(aon_clk), .rst_n(aon_rst_n));
 
 `ifdef GATE_LEVEL
-  wire io_div4_clk = 1'b0;
-  wire io_div4_rst_n = 1'b1;
+  wire io_clk = 1'b0;
+  wire io_rst_n = 1'b1;
 `else
-  wire io_div4_clk = `CLKMGR_HIER.clocks_o.clk_io_div4_powerup;
-  wire io_div4_rst_n = `RSTMGR_HIER.resets_o.rst_por_io_div4_n[0];
+  wire io_clk = `CLKMGR_HIER.clocks_o.clk_io_powerup;
+  wire io_rst_n = `RSTMGR_HIER.resets_o.rst_por_io_n[0];
 `endif
-  clk_rst_if io_div4_clk_rst_if(.clk(io_div4_clk), .rst_n(io_div4_rst_n));
+  clk_rst_if io_clk_rst_if(.clk(io_clk), .rst_n(io_rst_n));
 
 `ifdef GATE_LEVEL
   wire lc_ready = 1'b0;
@@ -536,7 +536,6 @@ interface chip_if;
   wire sram_ret_init_done = `SRAM_CTRL_RET_HIER.u_reg_regs.status_init_done_qs;
   wire sram_mbox_init_done = `SRAM_CTRL_MBOX.u_reg_regs.status_init_done_qs;
 `endif
-  wire adc_data_valid = `AST_HIER.u_adc.adc_d_val_o;
 
   // alert_esc_if alert_if[NUM_ALERTS](.clk  (`ALERT_HANDLER_HIER.clk_i),
   //                                   .rst_n(`ALERT_HANDLER_HIER.rst_ni));
@@ -555,8 +554,8 @@ interface chip_if;
                                           .rst_n   (1)
 `else
                                           .clk     (`CLKMGR_HIER.clocks_o.clk_aon_powerup),
-                                          .fast_clk(`CLKMGR_HIER.clocks_o.clk_io_div4_powerup),
-                                          .rst_n   (`RSTMGR_HIER.resets_o.rst_por_io_div4_n[0])
+                                          .fast_clk(`CLKMGR_HIER.clocks_o.clk_io_powerup),
+                                          .rst_n   (`RSTMGR_HIER.resets_o.rst_por_io_n[0])
 `endif
                                           );
   assign pwrmgr_low_power_if.low_power      = `PWRMGR_HIER.low_power_o;
@@ -576,8 +575,6 @@ interface chip_if;
   wire otbn_clk_is_enabled = 0;
 
   wire io_clk_is_enabled = 0;
-  wire io_div2_clk_is_enabled = 0;
-  wire io_div4_clk_is_enabled = 0;
 `else
   wire aes_clk_is_enabled = `CLKMGR_HIER.u_reg.hw2reg.clk_hints_status.clk_main_aes_val.d;
   wire hmac_clk_is_enabled = `CLKMGR_HIER.u_reg.hw2reg.clk_hints_status.clk_main_hmac_val.d;
@@ -586,8 +583,6 @@ interface chip_if;
 
 // TODO: Not used in DV simulation.
 // wire io_clk_is_enabled = `CLKMGR_HIER.u_reg.reg2hw.clk_enables.clk_io_peri_en.q;
-  wire io_div2_clk_is_enabled = `CLKMGR_HIER.u_reg.reg2hw.clk_enables.clk_io_div2_peri_en.q;
-  wire io_div4_clk_is_enabled = `CLKMGR_HIER.u_reg.reg2hw.clk_enables.clk_io_div4_peri_en.q;
 `endif
   // Ibex monitors.
   ibex_pkg::pmp_mseccfg_t pmp_mseccfg;
@@ -983,26 +978,6 @@ interface chip_if;
   `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_edn_1_fsm_state,
       edn_1_fsm_state, 9)
 
-  // Signal probe function for `wkup_internal_req_o` of SOC_PROXY_HIER
-  `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_soc_proxy_wkup_internal_req,
-                                   `SOC_PROXY_HIER.wkup_internal_req_o,
-                                   1)
-
-  // Signal probe function for `soc_intr_async_i` of TOP_HIER.
-  `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_soc_intr_async,
-                                   `TOP_HIER.soc_intr_async_i,
-                                   soc_proxy_reg_pkg::NumExternalIrqs)
-
-  // Signal probe function for `soc_fatal_alert_req` of TOP_HIER.
-  `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_soc_fatal_alert_req,
-                                   `TOP_HIER.soc_fatal_alert_req_i,
-                                   2 * soc_proxy_pkg::NumFatalExternalAlerts)
-
-  // Signal probe function for `soc_fatal_alert_rsp` of TOP_HIER.
-  `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_soc_fatal_alert_rsp,
-                                   `TOP_HIER.soc_fatal_alert_rsp_o,
-                                   2 * soc_proxy_pkg::NumFatalExternalAlerts)
-
   // Signal probe function for `soc_gpi_async_o` of TOP_HIER.
   `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_soc_gpi_async,
                                    `TOP_HIER.soc_gpi_async_o,
@@ -1012,16 +987,6 @@ interface chip_if;
   `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_soc_gpo_async,
                                    `TOP_HIER.soc_gpo_async_i,
                                    soc_proxy_pkg::NumSocGpio)
-
-  // Signal probe function for `soc_recov_alert_req` of TOP_HIER.
-  `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_soc_recov_alert_req,
-                                   `TOP_HIER.soc_recov_alert_req_i,
-                                   2 * soc_proxy_pkg::NumRecovExternalAlerts)
-
-  // Signal probe function for `soc_recov_alert_rsp` of TOP_HIER.
-  `DV_CREATE_SIGNAL_PROBE_FUNCTION(signal_probe_soc_recov_alert_rsp,
-                                   `TOP_HIER.soc_recov_alert_rsp_o,
-                                   2 * soc_proxy_pkg::NumRecovExternalAlerts)
 
   // Signal probe function for `boot_status.light_reset_req` of TOP_HIER.
   // This shall only be used as a probe, not a driver.

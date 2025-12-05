@@ -60,11 +60,27 @@ dt_instance_id_t dt_${device_name}_instance_id(
   return TRY_GET_DT(dt, kDtInstanceIdUnknown)->inst_id;
 }
 
+% if helper.has_reg_blocks():
 uint32_t dt_${device_name}_reg_block(
     dt_${device_name}_t dt,
     dt_${device_name}_reg_block_t reg_block) {
   // Return a recognizable address in case of wrong argument.
-  return TRY_GET_DT(dt, 0xdeadbeef)->base_addr[reg_block];
+  return TRY_GET_DT(dt, 0xdeadbeef)->reg_addr[reg_block];
+}
+
+% endif
+uint32_t dt_${device_name}_memory_base(
+    dt_${device_name}_t dt,
+    dt_${device_name}_memory_t mem) {
+  // Return a recognizable address in case of wrong argument.
+  return TRY_GET_DT(dt, 0xdeadbeef)->mem_addr[mem];
+}
+
+uint32_t dt_${device_name}_memory_size(
+    dt_${device_name}_t dt,
+    dt_${device_name}_memory_t mem)  {
+  // Return an empty size in case of wrong argument.
+  return TRY_GET_DT(dt, 0)->mem_size[mem];
 }
 
 % if helper.has_irqs():

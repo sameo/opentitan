@@ -10,12 +10,13 @@
 #include "sw/device/lib/dif/dif_alert_handler.h"
 #include "sw/device/lib/dif/dif_clkmgr.h"
 #include "sw/device/lib/dif/dif_flash_ctrl.h"
+#include "sw/device/lib/dif/dif_gpio.h"
 #include "sw/device/lib/dif/dif_otp_ctrl.h"
+#include "sw/device/lib/dif/dif_pinmux.h"
 #include "sw/device/lib/runtime/hart.h"
 #include "sw/device/lib/runtime/ibex.h"
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/runtime/print.h"
-#include "sw/device/lib/testing/flash_ctrl_testutils.h"
 #include "sw/device/lib/testing/otp_ctrl_testutils.h"
 #include "sw/device/lib/testing/pinmux_testutils.h"
 #include "sw/device/lib/testing/test_framework/check.h"
@@ -25,7 +26,6 @@
 #include "sw/device/silicon_creator/lib/drivers/ibex.h"
 #include "sw/device/silicon_creator/lib/drivers/rstmgr.h"
 #include "sw/device/silicon_creator/manuf/base/flash_info_permissions.h"
-#include "sw/device/silicon_creator/manuf/lib/flash_info_fields.h"
 #include "sw/device/silicon_creator/manuf/lib/individualize.h"
 #include "sw/device/silicon_creator/manuf/lib/individualize_sw_cfg.h"
 #include "sw/device/silicon_creator/manuf/lib/otp_fields.h"
@@ -40,18 +40,24 @@ OTTF_DEFINE_TEST_CONFIG(.console.type = kOttfConsoleSpiDevice,
 static dif_alert_handler_t alert_handler;
 static dif_clkmgr_t clkmgr;
 static dif_flash_ctrl_state_t flash_ctrl_state;
+static dif_gpio_t gpio;
 static dif_otp_ctrl_t otp_ctrl;
 static dif_pinmux_t pinmux;
 
 static manuf_ft_individualize_data_t in_data;
-static uint32_t cp_device_id[kFlashInfoFieldCpDeviceIdSizeIn32BitWords];
-static uint32_t ast_cfg_data[kFlashInfoAstCalibrationDataSizeIn32BitWords];
 
 // Switching to external clocks causes the clocks to be unstable for some time.
 // This is used to delay further action when the switch happens.
 static const int kSettleDelayMicros = 200;
 
+// Number of NMIs seen as a result of alerts firing.
 static size_t alert_nmi_count = 0;
+
+// OTP programming indicator GPIOs.
+static const dif_gpio_pin_t kGpioPinOtpDaiWaitHook = 0;
+static const dif_gpio_pin_t kGpioPinOtpDaiWriteHook = 1;
+static const dif_gpio_pin_t kGpioPinOtpDaiReadHook = 2;
+static const dif_gpio_pin_t kGpioPinOtpDaiErrorCheckHook = 3;
 
 /**
  * Handle NMIs from the alert escalation mechanism.
@@ -75,47 +81,11 @@ static status_t peripheral_handles_init(void) {
   TRY(dif_flash_ctrl_init_state(
       &flash_ctrl_state,
       mmio_region_from_addr(TOP_EARLGREY_FLASH_CTRL_CORE_BASE_ADDR)));
+  TRY(dif_gpio_init(mmio_region_from_addr(TOP_EARLGREY_GPIO_BASE_ADDR), &gpio));
   TRY(dif_otp_ctrl_init(
       mmio_region_from_addr(TOP_EARLGREY_OTP_CTRL_CORE_BASE_ADDR), &otp_ctrl));
   TRY(dif_pinmux_init(mmio_region_from_addr(TOP_EARLGREY_PINMUX_AON_BASE_ADDR),
                       &pinmux));
-  return OK_STATUS();
-}
-
-/**
- * Print data stored in flash info page 0 to console for manual verification
- * purposes during silicon bring-up.
- */
-static status_t read_and_print_flash_and_ast_data(void) {
-  uint32_t byte_address = 0;
-  TRY(flash_ctrl_testutils_info_region_setup_properties(
-      &flash_ctrl_state, kFlashInfoFieldCpDeviceId.page,
-      kFlashInfoFieldCpDeviceId.bank, kFlashInfoFieldCpDeviceId.partition,
-      kFlashInfoPage0Permissions, &byte_address));
-
-  LOG_INFO("CP Device ID:");
-  TRY(manuf_flash_info_field_read(&flash_ctrl_state, kFlashInfoFieldCpDeviceId,
-                                  cp_device_id,
-                                  kFlashInfoFieldCpDeviceIdSizeIn32BitWords));
-  for (size_t i = 0; i < kHwCfgDeviceIdSizeIn32BitWords; ++i) {
-    LOG_INFO("0x%08x", cp_device_id[i]);
-  }
-
-  LOG_INFO("AST Calibration Values (in flash):");
-  TRY(manuf_flash_info_field_read(
-      &flash_ctrl_state, kFlashInfoFieldAstCalibrationData, ast_cfg_data,
-      kFlashInfoAstCalibrationDataSizeIn32BitWords));
-  for (size_t i = 0; i < kFlashInfoAstCalibrationDataSizeIn32BitWords; ++i) {
-    LOG_INFO("Word %d = 0x%08x", i, ast_cfg_data[i]);
-  }
-
-  LOG_INFO("AST Calibration Values (in CSRs):");
-  for (size_t i = 0; i < kFlashInfoAstCalibrationDataSizeIn32BitWords; ++i) {
-    LOG_INFO(
-        "Word %d = 0x%08x", i,
-        abs_mmio_read32(TOP_EARLGREY_AST_BASE_ADDR + i * sizeof(uint32_t)));
-  }
-
   return OK_STATUS();
 }
 
@@ -181,6 +151,65 @@ static status_t configure_all_alerts(void) {
   return OK_STATUS();
 }
 
+static status_t configure_gpio_indicators(void) {
+  TRY(dif_pinmux_output_select(&pinmux, kTopEarlgreyPinmuxMioOutIoc9,
+                               kTopEarlgreyPinmuxOutselGpioGpio0));
+  TRY(dif_pinmux_output_select(&pinmux, kTopEarlgreyPinmuxMioOutIoc10,
+                               kTopEarlgreyPinmuxOutselGpioGpio1));
+  TRY(dif_pinmux_output_select(&pinmux, kTopEarlgreyPinmuxMioOutIoc11,
+                               kTopEarlgreyPinmuxOutselGpioGpio2));
+  TRY(dif_pinmux_output_select(&pinmux, kTopEarlgreyPinmuxMioOutIoc12,
+                               kTopEarlgreyPinmuxOutselGpioGpio3));
+  TRY(dif_gpio_output_set_enabled_all(&gpio, 0xF));  // Enable first 4 GPIOs.
+  TRY(dif_gpio_write_all(&gpio, /*write_val=*/0));
+  return OK_STATUS();
+}
+
+status_t otp_ctrl_testutils_wait_for_dai_pre_hook(
+    const dif_otp_ctrl_t *otp_ctrl) {
+  TRY(dif_gpio_write(&gpio, kGpioPinOtpDaiWaitHook, true));
+  return OK_STATUS();
+}
+
+status_t otp_ctrl_testutils_wait_for_dai_post_hook(
+    const dif_otp_ctrl_t *otp_ctrl) {
+  TRY(dif_gpio_write(&gpio, kGpioPinOtpDaiWaitHook, false));
+  return OK_STATUS();
+}
+
+status_t otp_ctrl_testutils_dai_write_pre_hook(const dif_otp_ctrl_t *otp_ctrl) {
+  TRY(dif_gpio_write(&gpio, kGpioPinOtpDaiWriteHook, true));
+  return OK_STATUS();
+}
+
+status_t otp_ctrl_testutils_dai_write_post_hook(
+    const dif_otp_ctrl_t *otp_ctrl) {
+  TRY(dif_gpio_write(&gpio, kGpioPinOtpDaiWriteHook, false));
+  return OK_STATUS();
+}
+
+status_t otp_ctrl_testutils_dai_read_pre_hook(const dif_otp_ctrl_t *otp_ctrl) {
+  TRY(dif_gpio_write(&gpio, kGpioPinOtpDaiReadHook, true));
+  return OK_STATUS();
+}
+
+status_t otp_ctrl_testutils_dai_read_post_hook(const dif_otp_ctrl_t *otp_ctrl) {
+  TRY(dif_gpio_write(&gpio, kGpioPinOtpDaiReadHook, false));
+  return OK_STATUS();
+}
+
+status_t otp_ctrl_testutils_dai_write_pre_error_check_hook(
+    const dif_otp_ctrl_t *otp_ctrl) {
+  TRY(dif_gpio_write(&gpio, kGpioPinOtpDaiErrorCheckHook, true));
+  return OK_STATUS();
+}
+
+status_t otp_ctrl_testutils_dai_write_post_error_check_hook(
+    const dif_otp_ctrl_t *otp_ctrl) {
+  TRY(dif_gpio_write(&gpio, kGpioPinOtpDaiErrorCheckHook, false));
+  return OK_STATUS();
+}
+
 /**
  * Provision OTP {CreatorSw,OwnerSw,Hw}Cfg and RotCreatorAuth{Codesign,State}
  * partitions.
@@ -201,19 +230,33 @@ static status_t provision(ujson_t *uj) {
 
   // Enable external clock on silicon platforms if requested.
   if (kDeviceType == kDeviceSilicon && in_data.use_ext_clk) {
-    CHECK_DIF_OK(dif_clkmgr_external_clock_set_enabled(&clkmgr,
-                                                       /*is_low_speed=*/true));
+    TRY(dif_clkmgr_external_clock_set_enabled(&clkmgr,
+                                              /*is_low_speed=*/true));
     IBEX_SPIN_FOR(did_extclk_settle(&clkmgr), kSettleDelayMicros);
     LOG_INFO("External clock enabled.");
   }
+
+  // Enable GPIO indicators during OTP writes.
+  TRY(configure_gpio_indicators());
+
+  // Turn off OTP runtime checks.
+  TRY(dif_otp_ctrl_configure(
+      &otp_ctrl,
+      (dif_otp_ctrl_config_t){
+          .check_timeout = 0,            // Disable the check timeout mechanism.
+          .integrity_period_mask = 0,    // Disable integrity checks.
+          .consistency_period_mask = 0,  // Disable consistency checks.
+      }));
 
   // Perform OTP writes.
   LOG_INFO("Writing HW_CFG* OTP partitions ...");
   TRY(manuf_individualize_device_hw_cfg(&flash_ctrl_state, &otp_ctrl,
                                         kFlashInfoPage0Permissions,
                                         in_data.ft_device_id));
+
   LOG_INFO("Writing ROT_CREATOR_AUTH_CODESIGN OTP partition ...");
   TRY(manuf_individualize_device_rot_creator_auth_codesign(&otp_ctrl));
+
   LOG_INFO("Writing ROT_CREATOR_AUTH_STATE OTP partition ...");
   TRY(manuf_individualize_device_rot_creator_auth_state(&otp_ctrl));
   LOG_INFO("Writing OWNER_SW_CFG OTP partition ...");
@@ -241,10 +284,6 @@ bool test_main(void) {
 
   // Clear the reset reasons.
   rstmgr_reason_clear(UINT8_MAX);
-
-  // Read and log flash and AST data to console (for manual verification
-  // purposes), and perform provisioning operations.
-  CHECK_STATUS_OK(read_and_print_flash_and_ast_data());
 
   // Perform provisioning operations.
   CHECK_STATUS_OK(provision(&uj));

@@ -16,6 +16,7 @@
 #include "sw/device/lib/crypto/impl/aes_gcm/ghash.h"
 #include "sw/device/lib/crypto/impl/integrity.h"
 #include "sw/device/lib/crypto/impl/keyblob.h"
+#include "sw/device/lib/crypto/impl/security_config.h"
 #include "sw/device/lib/crypto/impl/status.h"
 #include "sw/device/lib/crypto/include/datatypes.h"
 
@@ -85,12 +86,10 @@ status_t gcm_remask_key(aes_gcm_context_t *internal_ctx) {
     HARDENED_TRY(hardened_memshred(mask, internal_ctx->key.key_len));
 
     // XOR each share with the mask.
-    HARDENED_TRY(
-        hardened_xor_in_place((uint32_t *)internal_ctx->key.key_shares[0], mask,
-                              internal_ctx->key.key_len));
-    HARDENED_TRY(
-        hardened_xor_in_place((uint32_t *)internal_ctx->key.key_shares[1], mask,
-                              internal_ctx->key.key_len));
+    hardened_xor_in_place((uint32_t *)internal_ctx->key.key_shares[0], mask,
+                          internal_ctx->key.key_len);
+    hardened_xor_in_place((uint32_t *)internal_ctx->key.key_shares[1], mask,
+                          internal_ctx->key.key_len);
     // Update the checksum.
     internal_ctx->key.checksum = aes_key_integrity_checksum(&internal_ctx->key);
   } else {
@@ -290,6 +289,9 @@ otcrypto_status_t otcrypto_aes_gcm_encrypt(otcrypto_blinded_key_t *key,
     return OTCRYPTO_BAD_ARGS;
   }
 
+  // Randomize the tag before the operation.
+  HARDENED_TRY(hardened_memshred(auth_tag.data, auth_tag.len));
+
   // Ensure entropy complex is initialized.
   HARDENED_TRY(entropy_complex_check());
 
@@ -391,6 +393,9 @@ otcrypto_status_t otcrypto_aes_gcm_encrypt_init(
   if (key == NULL || key->keyblob == NULL || iv.data == NULL || ctx == NULL) {
     return OTCRYPTO_BAD_ARGS;
   }
+
+  // Check the security config of the device.
+  HARDENED_TRY(security_config_check(key->config.security_level));
 
   // Ensure entropy complex is initialized.
   HARDENED_TRY(entropy_complex_check());
@@ -556,6 +561,9 @@ otcrypto_status_t otcrypto_aes_gcm_encrypt_final(
     return OTCRYPTO_BAD_ARGS;
   }
   *ciphertext_bytes_written = 0;
+
+  // Randomize the tag before the operation.
+  HARDENED_TRY(hardened_memshred(auth_tag.data, auth_tag.len));
 
   // Ensure entropy complex is initialized.
   HARDENED_TRY(entropy_complex_check());

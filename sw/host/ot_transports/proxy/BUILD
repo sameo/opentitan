@@ -19,6 +19,7 @@ rust_library(
     crate_name = "ot_transport_proxy",
     deps = [
         "//sw/host/opentitanlib:opentitanlib_base",
+        "//sw/host/ot_proxy/proto",
         "@crate_index//:anyhow",
         "@crate_index//:clap",
         "@crate_index//:log",

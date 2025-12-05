@@ -15,9 +15,9 @@ use zerocopy::IntoBytes;
 
 use cert_lib::{CaConfig, CaKey, EndorsedCert, parse_and_endorse_x509_cert, validate_cert_chain};
 use ft_ext_lib::ft_ext;
-use opentitanlib::app::TransportWrapper;
+use opentitanlib::app::{TransportWrapper, UartRx};
 use opentitanlib::console::spi::SpiConsoleDevice;
-use opentitanlib::dif::lc_ctrl::{DifLcCtrlState, LcCtrlReg};
+use opentitanlib::io::console::ConsoleError;
 use opentitanlib::io::jtag::{JtagParams, JtagTap};
 use opentitanlib::test_utils::crashdump::{
     read_alert_crashdump_data, read_cpu_crashdump_data, read_reset_reason,
@@ -31,6 +31,7 @@ use opentitanlib::test_utils::rpc::{ConsoleRecv, ConsoleSend};
 use opentitanlib::uart::console::UartConsole;
 use ot_certs::CertFormat;
 use ot_certs::x509::parse_certificate;
+use ot_hal::dif::lc_ctrl::{DifLcCtrlState, LcCtrlReg};
 use perso_tlv_lib::perso_tlv_get_field;
 use perso_tlv_lib::{CertHeader, CertHeaderType, ObjHeader, ObjHeaderType, ObjType};
 use ujson_lib::provisioning_data::{
@@ -48,12 +49,11 @@ const FT_NMI_CRASHDUMP_DELAY_MILLIS: u64 = 10000; // 10 seconds
 pub fn test_unlock(
     transport: &TransportWrapper,
     jtag_params: &JtagParams,
-    reset_delay: Duration,
     test_unlock_token: &ArrayVec<u32, 4>,
 ) -> Result<()> {
     // Connect to LC TAP.
     transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
-    transport.reset_target(reset_delay, true)?;
+    transport.reset(UartRx::Clear)?;
     let mut jtag = jtag_params.create(transport)?.connect(JtagTap::LcTap)?;
 
     // Check that LC state is currently `TEST_LOCKED0`.
@@ -69,7 +69,6 @@ pub fn test_unlock(
         Some(test_unlock_token.clone().into_inner().unwrap()),
         /*use_external_clk=*/
         false, // AST will be calibrated by now, so no need for ext_clk.
-        reset_delay,
         /*reset_tap_straps=*/ Some(JtagTap::LcTap),
     )?;
 
@@ -88,7 +87,6 @@ pub fn test_unlock(
 pub fn run_sram_ft_individualize(
     transport: &TransportWrapper,
     jtag_params: &JtagParams,
-    reset_delay: Duration,
     sram_program: &SramProgramParams,
     ft_individualize_data_in: &ManufFtIndividualizeData,
     timeout: Duration,
@@ -96,7 +94,7 @@ pub fn run_sram_ft_individualize(
 ) -> Result<()> {
     // Set CPU TAP straps, reset, and connect to the JTAG interface.
     transport.pin_strapping("PINMUX_TAP_RISCV")?.apply()?;
-    transport.reset_target(reset_delay, true)?;
+    transport.reset(UartRx::Clear)?;
     let mut jtag = jtag_params.create(transport)?.connect(JtagTap::RiscvTap)?;
 
     // Reset and halt the CPU to ensure we are in a known state, and clear out any ROM messages
@@ -109,6 +107,12 @@ pub fn run_sram_ft_individualize(
         ExecutionResult::Executing => log::info!("SRAM program loaded and is executing."),
         _ => panic!("SRAM program load/execution failed: {:?}.", result),
     }
+
+    // Switch TAP straps to LC TAP (without resetting) to aid debugging if there are OTP issues.
+    // TAP straps are continuously sampled in TEST_UNLOCKED* LC states.
+    jtag.disconnect()?;
+    transport.pin_strapping("PINMUX_TAP_RISCV")?.remove()?;
+    transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
 
     // Wait for SRAM program to complete execution.
     let _ = UartConsole::wait_for(
@@ -128,14 +132,8 @@ pub fn run_sram_ft_individualize(
         timeout,
     )?;
     match console_text[0].as_str() {
-        "FT SRAM provisioning done." => {
-            jtag.disconnect()?;
-            transport.pin_strapping("PINMUX_TAP_RISCV")?.remove()?;
-            Ok(())
-        }
+        "FT SRAM provisioning done." => Ok(()),
         "Processing Alert NMI 10 ..." => {
-            transport.pin_strapping("PINMUX_TAP_RISCV")?.remove()?;
-            jtag.disconnect()?;
             log::info!(
                 "10 NMIs detected, waiting {:?} before capturing crashdump information",
                 Duration::from_millis(FT_NMI_CRASHDUMP_DELAY_MILLIS)
@@ -153,7 +151,6 @@ pub fn run_sram_ft_individualize(
 pub fn test_exit(
     transport: &TransportWrapper,
     jtag_params: &JtagParams,
-    reset_delay: Duration,
     test_exit_token: &ArrayVec<u32, 4>,
     target_mission_mode_lc_state: DifLcCtrlState,
 ) -> Result<()> {
@@ -181,7 +178,6 @@ pub fn test_exit(
         Some(test_exit_token.clone().into_inner().unwrap()),
         /*use_external_clk=*/
         false, // AST will be calibrated by now, so no need for ext_clk.
-        reset_delay,
         /*reset_tap_straps=*/ None,
     )?;
 
@@ -562,14 +558,13 @@ pub fn run_ft_personalize(
 
 pub fn check_slot_b_boot_up(
     transport: &TransportWrapper,
-    init: &InitializeTest,
     timeout: Duration,
     response: &mut PersonalizeResponse,
     owner_fw_success_string: Option<String>,
 ) -> Result<()> {
-    transport.reset_target(init.bootstrap.options.reset_delay, true)?;
+    transport.reset(UartRx::Clear)?;
     let uart_console = transport.uart("console")?;
-    let result = UartConsole::wait_for(&*uart_console, r"ROM_EXT:(.*)\r\n", timeout)?;
+    let result = UartConsole::wait_for(&*uart_console, r"ROM_EXT:(.*)\r", timeout)?;
     response.stats.log_string(
         "rom_ext-version",
         result
@@ -610,7 +605,12 @@ pub fn check_slot_b_boot_up(
             }
         }
         Err(e) => {
-            if owner_fw_success_string.is_none() && e.to_string().contains("Timed Out") {
+            if owner_fw_success_string.is_none()
+                && matches!(
+                    e.downcast_ref::<ConsoleError>(),
+                    Some(ConsoleError::TimedOut)
+                )
+            {
                 // Error message not found after timeout. This is the expected behavior.
             } else {
                 // An unexpected error occurred while waiting for the console output.

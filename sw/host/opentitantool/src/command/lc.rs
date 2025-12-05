@@ -8,14 +8,12 @@ use std::time::Duration;
 use anyhow::{Result, ensure};
 use clap::{Args, Subcommand};
 use hex::decode;
-use humantime::parse_duration;
-use serde_annotate::Annotate;
 
-use opentitanlib::app::TransportWrapper;
 use opentitanlib::app::command::CommandDispatch;
-use opentitanlib::dif::lc_ctrl::{DifLcCtrlState, DifLcCtrlToken, LcCtrlReg, LcCtrlStatus};
+use opentitanlib::app::{TransportWrapper, UartRx};
 use opentitanlib::io::jtag::{Jtag, JtagParams, JtagTap};
 use opentitanlib::test_utils::lc_transition::{trigger_lc_transition, trigger_volatile_raw_unlock};
+use ot_hal::dif::lc_ctrl::{DifLcCtrlState, DifLcCtrlToken, LcCtrlReg, LcCtrlStatus};
 
 #[derive(serde::Serialize)]
 pub struct LcStateReadResult {
@@ -73,10 +71,6 @@ fn parse_token_str(token: &str) -> Result<DifLcCtrlToken> {
 #[derive(Debug, Args)]
 /// Reads the device life cycle state over JTAG.
 pub struct LcStateRead {
-    /// Reset duration when switching the LC TAP straps.
-    #[arg(long, value_parser = parse_duration, default_value = "100ms")]
-    pub reset_delay: Duration,
-
     #[command(flatten)]
     pub jtag_params: JtagParams,
 
@@ -92,12 +86,12 @@ impl CommandDispatch for LcStateRead {
         &self,
         _context: &dyn Any,
         transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         // Set the TAP straps for the lifecycle controller and reset.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
 
         if !self.skip_reset {
-            transport.reset_target(self.reset_delay, true)?;
+            transport.reset(UartRx::Clear)?;
         } else {
             // Unconditionally wait for the device to switch tap.
             std::thread::sleep(Duration::from_millis(10));
@@ -126,10 +120,6 @@ pub struct LcRegReadResult {
 #[derive(Debug, Args)]
 /// Reads the device life cycle state over JTAG.
 pub struct LcRegRead {
-    /// Reset duration when switching the LC TAP straps.
-    #[arg(long, value_parser = parse_duration, default_value = "100ms")]
-    pub reset_delay: Duration,
-
     #[command(flatten)]
     pub jtag_params: JtagParams,
 
@@ -142,7 +132,7 @@ impl CommandDispatch for LcRegRead {
         &self,
         _context: &dyn Any,
         transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         // Set the TAP straps for the lifecycle controller.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
 
@@ -165,10 +155,6 @@ impl CommandDispatch for LcRegRead {
 #[derive(Debug, Args)]
 /// Reads the 256bit device ID over JTAG.
 pub struct LcDeviceIdRead {
-    /// Reset duration when switching the LC TAP straps.
-    #[arg(long, value_parser = parse_duration, default_value = "100ms")]
-    pub reset_delay: Duration,
-
     #[command(flatten)]
     pub jtag_params: JtagParams,
 }
@@ -178,10 +164,10 @@ impl CommandDispatch for LcDeviceIdRead {
         &self,
         _context: &dyn Any,
         transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         // Set the TAP straps for the lifecycle controller and reset.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
-        transport.reset_target(self.reset_delay, true)?;
+        transport.reset(UartRx::Clear)?;
 
         // Spawn an OpenOCD process and connect to the LC JTAG TAP.
         let mut jtag = self
@@ -220,10 +206,6 @@ pub struct RawUnlock {
     #[arg(long)]
     pub token: String,
 
-    /// Reset duration when switching the LC TAP straps.
-    #[arg(long, value_parser = parse_duration, default_value = "100ms")]
-    pub reset_delay: Duration,
-
     #[command(flatten)]
     pub jtag_params: JtagParams,
 }
@@ -233,10 +215,10 @@ impl CommandDispatch for RawUnlock {
         &self,
         _context: &dyn Any,
         transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         // Set the TAP straps for the lifecycle controller and reset.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
-        transport.reset_target(self.reset_delay, true)?;
+        transport.reset(UartRx::Clear)?;
 
         // Spawn an OpenOCD process and connect to the LC JTAG TAP.
         let mut jtag = self
@@ -255,7 +237,6 @@ impl CommandDispatch for RawUnlock {
             DifLcCtrlState::TestUnlocked0,
             Some(token.into_register_values()),
             /*use_external_clk=*/ true,
-            self.reset_delay,
             /*reset_tap_straps=*/ Some(JtagTap::LcTap),
         )?;
 
@@ -284,10 +265,6 @@ pub struct Transition {
     #[arg(long, default_value = "0x00000000000000000000000000000000")]
     pub token: String,
 
-    /// Reset duration when switching the LC TAP straps.
-    #[arg(long, value_parser = parse_duration, default_value = "100ms")]
-    pub reset_delay: Duration,
-
     #[command(flatten)]
     pub jtag_params: JtagParams,
 }
@@ -297,10 +274,10 @@ impl CommandDispatch for Transition {
         &self,
         _context: &dyn Any,
         transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         // Set the TAP straps for the lifecycle controller and reset.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
-        transport.reset_target(self.reset_delay, true)?;
+        transport.reset(UartRx::Clear)?;
 
         // Spawn an OpenOCD process and connect to the LC JTAG TAP.
         let mut jtag = self
@@ -314,7 +291,7 @@ impl CommandDispatch for Transition {
         rom_bootstrap.apply()?;
 
         // Reset the chip so that LC_CTRL is in a clean state.
-        let _ = transport.reset_target(Duration::from_millis(50), false);
+        let _ = transport.reset_with_delay(UartRx::Keep, Duration::from_millis(50));
         std::thread::sleep(Duration::from_millis(50));
 
         // Check whether this is a valid transition.
@@ -327,7 +304,6 @@ impl CommandDispatch for Transition {
             self.target_lc_state,
             Some(token.into_register_values()),
             /*use_external_clk=*/ true,
-            self.reset_delay,
             /*reset_tap_straps=*/ Some(JtagTap::LcTap),
         )?;
 
@@ -349,10 +325,6 @@ impl CommandDispatch for Transition {
 #[derive(Debug, Args)]
 /// Reads the LC controller's status register.
 pub struct Status {
-    /// Reset duration when switching the LC TAP straps.
-    #[arg(long, value_parser = parse_duration, default_value = "100ms")]
-    pub reset_delay: Duration,
-
     #[command(flatten)]
     pub jtag_params: JtagParams,
 }
@@ -378,10 +350,10 @@ impl CommandDispatch for Status {
         &self,
         _context: &dyn Any,
         transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         // Set the TAP straps for the lifecycle controller and reset.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
-        transport.reset_target(self.reset_delay, true)?;
+        transport.reset(UartRx::Clear)?;
 
         // Spawn an OpenOCD process, connect to the LC JTAG TAP, read register, and shutdown OpenOCD.
         let mut jtag = self
@@ -411,10 +383,6 @@ impl CommandDispatch for Status {
 #[derive(Debug, Args)]
 /// Reads the LC transition count register of the LC controller.
 pub struct TransitionCount {
-    /// Reset duration when switching the LC TAP straps.
-    #[arg(long, value_parser = parse_duration, default_value = "100ms")]
-    pub reset_delay: Duration,
-
     #[command(flatten)]
     pub jtag_params: JtagParams,
 }
@@ -429,10 +397,10 @@ impl CommandDispatch for TransitionCount {
         &self,
         _context: &dyn Any,
         transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         // Set the TAP straps for the lifecycle controller and reset.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
-        transport.reset_target(self.reset_delay, true)?;
+        transport.reset(UartRx::Clear)?;
 
         // Spawn an OpenOCD process, connect to the LC JTAG TAP, read register, and shutdown OpenOCD.
         let mut jtag = self
@@ -453,10 +421,6 @@ pub struct VolatileRawUnlock {
     #[arg(long)]
     pub token: String,
 
-    /// Reset duration when switching the LC TAP straps.
-    #[arg(long, value_parser = parse_duration, default_value = "100ms")]
-    pub reset_delay: Duration,
-
     #[command(flatten)]
     pub jtag_params: JtagParams,
 }
@@ -466,10 +430,10 @@ impl CommandDispatch for VolatileRawUnlock {
         &self,
         _context: &dyn Any,
         transport: &TransportWrapper,
-    ) -> Result<Option<Box<dyn Annotate>>> {
+    ) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         // Set the TAP straps for the lifecycle controller and reset.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
-        transport.reset_target(self.reset_delay, true)?;
+        transport.reset(UartRx::Clear)?;
 
         // Spawn an OpenOCD process and connect to the LC JTAG TAP.
         let mut jtag = self

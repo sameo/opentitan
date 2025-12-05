@@ -29,7 +29,7 @@ from mako import exceptions
 from mako.lookup import TemplateLookup
 from mako.template import Template
 from raclgen.lib import DEFAULT_RACL_CONFIG
-from reggen import access, gen_rtl, gen_sec_cm_testplan, window
+from reggen import access, gen_rtl, gen_sec_cm_testplan, params, reg_block, window
 from reggen.countermeasure import CounterMeasure
 from reggen.ip_block import IpBlock
 from topgen import get_hjsonobj_xbars
@@ -41,7 +41,7 @@ from topgen.c_test import TopGenCTest
 from topgen.clocks import Clocks
 from topgen.gen_dv import gen_dv
 from topgen.gen_top_docs import gen_top_docs
-from topgen.lib import find_module, find_modules, load_cfg, write_file_secure
+from topgen.lib import find_module, find_modules, load_cfg, write_file_secure, get_ipgen_params
 from topgen.merge import (
     amend_alert, amend_interrupt, amend_pinmux_io, amend_racl,
     amend_reset_request, amend_resets, amend_wkup, commit_alert_modules,
@@ -66,7 +66,7 @@ lichdr = """// Copyright lowRISC contributors (OpenTitan project).
 """
 genhdr = lichdr + warnhdr
 
-GENCMD = ("// util/topgen.py -t hw/{top_name}/data/{top_name}.hjson \\\n"
+GENCMD = ("// util/topgen.py -t hw/{top_name}/data/{top_name}.hjson\n"
           "//                -o hw/{top_name}/")
 
 SRCTREE_TOP = Path(__file__).parents[1].resolve()
@@ -282,11 +282,6 @@ def generate_ipgen(top: ConfigT, module: ConfigT, params: ParamsT,
             f"Unexpected uniquified name: expected {module_instance_name}, "
             f"got {uniq_name}")
     ipgen_render(module["template_type"], topname, params, out_path)
-
-
-def get_ipgen_params(module: ConfigT) -> ParamsT:
-    """Return ipgen params, if defined for this module"""
-    return deepcopy(module.get("ipgen_params", {}))
 
 
 def _get_alert_handler_params(top: ConfigT, name: str) -> ParamsT:
@@ -781,7 +776,7 @@ def _get_ac_range_check_params(top: ConfigT) -> ParamsT:
 def _get_racl_params(top: ConfigT) -> ParamsT:
     """Extracts parameters for racl_ctrl ipgen."""
     module = lib.find_module(top["module"], "racl_ctrl")
-    racl_group = module.get("racl_group", "Null")
+    racl_group = module.get("ipgen_params", {}).get("racl_group", "Null")
     if len(top["racl"]["policies"]) == 1:
         # If there is only one set of policies, take the first one
         policies = list(top["racl"]["policies"].values())[0]
@@ -806,6 +801,7 @@ def _get_racl_params(top: ConfigT) -> ParamsT:
         "nr_ctn_uid_bits": top["racl"]["nr_ctn_uid_bits"],
         "nr_policies": top["racl"]["nr_policies"],
         'nr_subscribing_ips': num_subscribing_ips[racl_group],
+        "racl_group": racl_group,
         "policies": policies
     })
     return ipgen_params
@@ -866,43 +862,95 @@ def generate_top_ral(topname: str, top: ConfigT, name_to_block: IpBlocksT,
             }
             if_addrs[(inst_name, if_name)] = if_addr
 
-    # Collect up the memories to add
-    mems = []
-    for item in list(top.get("memory", [])):
-        mems.append(create_mem(item, addrsep, regwidth))
-
     # Top-level may override the mem setting. Store the new type to
     # name_to_block. If no other instance uses the original type, delete it
     original_types = set()
     for module in top["module"]:
         if "memory" in module.keys() and len(module["memory"]) > 0:
-            newtype = "{}_{}".format(module["type"], module["name"])
+            mod_name = module["name"]
+            newtype = "{}_{}".format(module["type"], mod_name)
             assert newtype not in name_to_block
 
+            # Take a copy of the block-level description of the thing that is
+            # being instantiated as mod_name (so that we can configure it).
             block = deepcopy(name_to_block[module["type"]])
+
+            # Update name_to_block and inst_to_block so that they point at the
+            # new, more specific, information about the block.
             name_to_block[newtype] = block
-            inst_to_block[module["name"]] = newtype
+            inst_to_block[mod_name] = newtype
 
             original_types.add(module["type"])
 
+            # The instantiation might have requested a specific configuration
+            # for some of the memories of the block. Apply that here.
             for mem_name, item in module["memory"].items():
-                assert block.reg_blocks[mem_name]
-                assert len(block.reg_blocks[mem_name].windows) <= 1
-                item["name"] = mem_name
+                block_mem = block.memories.get(mem_name)
+                if block_mem is None:
+                    raise ValueError(f"The definition of {block.name} "
+                                     f"(instantiated as {mod_name}) doesn't "
+                                     f"declare a memory called {mem_name}.")
 
-                win = create_mem(item, addrsep, regwidth)
-                if len(block.reg_blocks[mem_name].windows) > 0:
-                    blk_win = block.reg_blocks[mem_name].windows[0]
+                # We only support memories with at most a single window (if
+                # there are several, we don't know which one to customise)
+                if len(block_mem.windows) > 1:
+                    raise ValueError(f"The block {block.name} declares "
+                                     f"multiple windows for its {mem_name} "
+                                     f"memory, so topgen can't configure that "
+                                     "memory.")
 
-                    # Top can only add new info for mem, shouldn't overwrite
-                    # existing configuration
-                    assert win.items == blk_win.items
-                    assert win.byte_write == blk_win.byte_write
-                    assert win.data_intg_passthru == blk_win.data_intg_passthru
+                # This is the new window to use
+                win = create_mem(mem_name, item, addrsep, regwidth)
 
-                    block.reg_blocks[mem_name].windows[0] = win
+                # If the block doesn't define a window for this memory, we can
+                # just make one. If it *does* define a window we can overwrite
+                # it, but want to make sure we won't mess things up.
+                if not block_mem.windows:
+                    block_mem.windows = [win]
                 else:
-                    block.reg_blocks[mem_name].windows.append(win)
+                    blk_win = block_mem.windows[0]
+
+                    # Check we end up with the same number of "items" in the
+                    # window (the window size divided by addrsep)
+                    if win.items != blk_win.items:
+                        raise ValueError(f"The {mod_name} instance of "
+                                         f"{block.name} doesn't match number "
+                                         f"of items for {mem_name}. Instance: "
+                                         f"{win.items}; blk: {blk_win.items}")
+
+                    # Check the byte_write setting matches
+                    if win.byte_write != blk_win.byte_write:
+                        raise ValueError(f"The {mod_name} instance of "
+                                         f"{block.name} requests the memory "
+                                         f"{mem_name} with byte_write="
+                                         f"{win.byte_write}, but the block "
+                                         f"declares it {blk_win.byte_write}.")
+
+                    # Check the data_intg_passthru setting matches
+                    if win.data_intg_passthru != blk_win.data_intg_passthru:
+                        raise ValueError(f"The {mod_name} instance of "
+                                         f"{block.name} requests the memory "
+                                         f"{mem_name} with data_intg_passthru="
+                                         f"{win.data_intg_passthru}, but the "
+                                         f"block declares it as "
+                                         f"{blk_win.data_intg_passthru}.")
+
+                    # If we get here, the two definitions matched. Use the new
+                    # one.
+                    block_mem.windows[0] = win
+
+                # At the moment the RAL template does not know about memories
+                # but it knows about windows in memory blocks. Therefoe we
+                # create an empty register block for RAL.
+                if_name = mem_name
+                block.reg_blocks[if_name] = reg_block.RegBlock(regwidth, params.ReggenParams(),
+                                                               windows = block_mem.windows)
+
+                if_addr = {
+                    asid: int(addr, 0)
+                    for (asid, addr) in module["base_addrs"][if_name].items()
+                }
+                if_addrs[(mod_name, if_name)] = if_addr
 
     for t in original_types:
         if t not in inst_to_block.values():
@@ -910,22 +958,25 @@ def generate_top_ral(topname: str, top: ConfigT, name_to_block: IpBlocksT,
 
     addr_spaces = {addr_space["name"] for addr_space in top["addr_spaces"]}
     chip = Top(topname, regwidth, addr_spaces, name_to_block, inst_to_block,
-               if_addrs, mems, attrs)
+               if_addrs, [], attrs)
 
     # generate the top ral model with template
     return gen_dv(chip, dv_base_names, str(out_path))
 
 
-def create_mem(item, addrsep, regwidth) -> window.Window:
-    byte_write = ("byte_write" in item and
-                  item["byte_write"].lower() == "true")
-    data_intg_passthru = ("data_intg_passthru" in item and
-                          item["data_intg_passthru"].lower() == "true")
-    size_in_bytes = int(item["size"], 0)
+def create_mem(name: str, item: dict[str, object], addrsep: int, regwidth: int) -> window.Window:
+    byte_write = item.get("byte_write", "false").lower() == "true"
+    data_intg_passthru = item.get("data_intg_passthru", "false").lower() == "true"
+
+    item_size = item.get("size")
+    if item_size is None:
+        raise ValueError("Item describing memory window with no size")
+
+    size_in_bytes = int(item_size, 0)
     num_regs = size_in_bytes // addrsep
     swaccess = access.SWAccess("top-level memory", item.get("swaccess", "rw"))
 
-    return window.Window(name=item["name"],
+    return window.Window(name=name,
                          desc="(generated from top-level)",
                          unusual=False,
                          byte_write=byte_write,
@@ -971,7 +1022,7 @@ def generate_rust(topname, completecfg, name_to_block, out_path, version_stamp,
                         helper=rs_helper)
 
         # Generate Rust host-side files
-        rsformat_dir = src_tree_top / 'sw/host/opentitanlib/src/chip/autogen'
+        rsformat_dir = src_tree_top / 'sw/host/ot_hal/src/top/autogen'
         rsformat_dir.mkdir(parents=True, exist_ok=True)
         render_template(topgen_template_path / 'host_toplevel.rs.tpl',
                         rsformat_dir / f"{topname}{addr_space_suffix}.rs",
@@ -1851,20 +1902,23 @@ waive --rule=line-length --location="{rnd_cnst_sv_file}"
             lc_seed = topcfg["seed"]["lc_ctrl_seed"]
             lc_st_enc = LcStEnc(lc_state_def_file, lc_seed.value)
             lc_st_enc_path = f"rtl/autogen/{lc_seed.seed_mode}"
-            lc_st_enc_file = "lc_ctrl_state_pkg.sv"
+            lc_st_enc_file = "lc_ctrl_token_pkg.sv"
             render_template(IP_RAW_PATH / "lc_ctrl" / "rtl" / "lc_ctrl_state_pkg.sv.tpl",
+                            IP_RAW_PATH / "lc_ctrl" / "rtl" / "lc_ctrl_state_pkg.sv",
+                            lc_st_enc=lc_st_enc)
+            render_template(IP_RAW_PATH / "lc_ctrl" / "rtl" / "lc_ctrl_token_pkg.sv.tpl",
                             out_path / lc_st_enc_path / lc_st_enc_file,
                             secure=True, lc_st_enc=lc_st_enc)
             render_template(TOPGEN_TEMPLATE_PATH / "core_file.core.tpl",
                             out_path / lc_st_enc_path /
-                            f"top_{topname}_{lc_seed.seed_mode}_lc_ctrl_state_pkg.core",
+                            f"top_{topname}_{lc_seed.seed_mode}_lc_ctrl_token_pkg.core",
                             package=(
                                 f"lowrisc:{topname}_constants:"
-                                f"{lc_seed.seed_mode}_lc_ctrl_state_pkg:0.1"
+                                f"{lc_seed.seed_mode}_lc_ctrl_token_pkg:0.1"
                             ),
-                            description="LC Controller State Encoding Package",
-                            virtual_package="lowrisc:virtual_ip:lc_ctrl_state_pkg",
-                            dependencies=["lowrisc:prim:util"],
+                            description="LC Controller Token Package",
+                            virtual_package="lowrisc:virtual_constants:lc_ctrl_token_pkg",
+                            dependencies=["lowrisc:ip:lc_ctrl_state_pkg"],
                             files=[lc_st_enc_file])
 
         # The C / SV file needs some complex information, so we initialize this

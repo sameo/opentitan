@@ -9,6 +9,7 @@ description: "Technology-independent prim library"
 filesets:
   files_rtl:
     depend:
+      - lowrisc:prim_generic:prim_pkg
       - lowrisc:prim_generic:and2
       - lowrisc:prim_generic:buf
       - lowrisc:prim_generic:clock_buf
@@ -18,6 +19,7 @@ filesets:
       - lowrisc:prim_generic:clock_mux2
       - lowrisc:prim_generic:flop
       - lowrisc:prim_generic:flop_2sync
+      - lowrisc:prim_generic:rst_sync
       - lowrisc:prim_generic:flop_en
       - lowrisc:prim_generic:pad_attr
       - lowrisc:prim_generic:pad_wrapper
@@ -34,6 +36,7 @@ filesets:
 #      - lowrisc:prim_generic:flash
 
 mapping:
+  "lowrisc:prim:prim_pkg"     : "lowrisc:prim_generic:prim_pkg"
   "lowrisc:prim:and2"         : "lowrisc:prim_generic:and2"
   "lowrisc:prim:buf"          : "lowrisc:prim_generic:buf"
   "lowrisc:prim:clock_buf"    : "lowrisc:prim_generic:clock_buf"
@@ -43,6 +46,7 @@ mapping:
   "lowrisc:prim:clock_mux2"   : "lowrisc:prim_generic:clock_mux2"
   "lowrisc:prim:flop"         : "lowrisc:prim_generic:flop"
   "lowrisc:prim:flop_2sync"   : "lowrisc:prim_generic:flop_2sync"
+  "lowrisc:prim:rst_sync"     : "lowrisc:prim_generic:rst_sync"
   "lowrisc:prim:flop_en"      : "lowrisc:prim_generic:flop_en"
   "lowrisc:prim:pad_attr"     : "lowrisc:prim_generic:pad_attr"
   "lowrisc:prim:pad_wrapper"  : "lowrisc:prim_generic:pad_wrapper"

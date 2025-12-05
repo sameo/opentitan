@@ -10,6 +10,7 @@
 #include "sw/device/lib/crypto/drivers/rv_core_ibex.h"
 #include "sw/device/lib/crypto/impl/integrity.h"
 #include "sw/device/lib/crypto/impl/keyblob.h"
+#include "sw/device/lib/crypto/impl/security_config.h"
 #include "sw/device/lib/crypto/impl/status.h"
 
 // Module ID for status codes.
@@ -161,6 +162,9 @@ static status_t hmac_key_construct(const otcrypto_blinded_key_t *key,
                       key_block_wordlen * sizeof(uint32_t));
     HARDENED_TRY(
         hardened_memcpy(hmac_key->key_block, unmasked_key, unmasked_key_len));
+    HARDENED_CHECK_EQ(
+        hardened_memeq(unmasked_key, hmac_key->key_block, unmasked_key_len),
+        kHardenedBoolTrue);
     // If the key size isn't a multiple of the word size, zero the last few
     // bytes.
     size_t offset = key->config.key_length % sizeof(uint32_t);
@@ -219,6 +223,11 @@ otcrypto_status_t otcrypto_hmac(const otcrypto_blinded_key_t *key,
       (input_message.data == NULL && input_message.len != 0)) {
     return OTCRYPTO_BAD_ARGS;
   }
+  // Preload the tag with randomness.
+  HARDENED_TRY(hardened_memshred(tag.data, tag.len));
+
+  // Check the security config of the device.
+  HARDENED_TRY(security_config_check(key->config.security_level));
 
   // Check the key for null pointers or invalid configurations.
   HARDENED_TRY(check_key(key));
@@ -445,7 +454,10 @@ otcrypto_status_t otcrypto_hmac_init(otcrypto_hmac_context_t *ctx,
   // avoid that multiple cases were executed.
   HARDENED_CHECK_EQ(launder32(key_mode_used), key->config.key_mode);
 
-  memcpy(ctx->data, &hmac_ctx, sizeof(hmac_ctx));
+  randomized_bytecopy(ctx->data, &hmac_ctx, sizeof(hmac_ctx));
+  HARDENED_CHECK_EQ(
+      consttime_memeq_byte(&hmac_ctx, ctx->data, sizeof(hmac_ctx)),
+      kHardenedBoolTrue);
   return OTCRYPTO_OK;
 }
 

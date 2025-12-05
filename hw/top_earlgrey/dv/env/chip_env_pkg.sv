@@ -33,6 +33,7 @@ package chip_env_pkg;
   import kmac_pkg::*;
   import aes_pkg::*;
   import lc_ctrl_state_pkg::*;
+  import lc_ctrl_token_pkg::*;
   import lc_ctrl_dv_utils_pkg::*;
   import flash_ctrl_bkdr_util_pkg::*;
   import mem_bkdr_util_pkg::*;
@@ -68,7 +69,7 @@ package chip_env_pkg;
 
   // ROM digest parameters
   localparam uint RomDigestDw = 256;
-  localparam uint RomMaxCheckAddr = top_earlgrey_pkg::TOP_EARLGREY_ROM_SIZE_BYTES -
+  localparam uint RomMaxCheckAddr = top_earlgrey_pkg::TOP_EARLGREY_ROM_CTRL_ROM_SIZE_BYTES -
                                     (RomDigestDw / 8);
 
   typedef virtual sw_logger_if         sw_logger_vif;

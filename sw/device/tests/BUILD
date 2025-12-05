@@ -353,12 +353,13 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
     ),
     fpga = fpga_params(timeout = "moderate"),
     verilator = verilator_params(timeout = "long"),
     deps = [
         "//hw/top:alert_handler_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:math",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:alert_handler",
@@ -695,10 +696,11 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(timeout = "long"),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:math",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:alert_handler",
@@ -1123,10 +1125,11 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(timeout = "long"),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/arch:device",
         "//sw/device/lib/runtime:hart",
         "//sw/device/lib/runtime:log",
@@ -1144,9 +1147,10 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/arch:device",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/base:stdasm",
@@ -1173,6 +1177,7 @@ opentitan_test(
             "//hw/top_earlgrey:silicon_creator": None,
             "//hw/top_earlgrey:silicon_owner_sival_rom_ext": "silicon_owner",
         },
+        DARJEELING_TEST_ENVS,
     ),
     silicon_owner = silicon_params(
         tags = ["broken"],
@@ -1185,7 +1190,7 @@ opentitan_test(
     ),
     deps = [
         ":otbn_randomness_impl",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:aes",
@@ -1262,6 +1267,7 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(
         timeout = "eternal",
@@ -1271,8 +1277,8 @@ opentitan_test(
     ),
     deps = [
         "//hw/ip/aes:model",
+        "//hw/top:dt",
         "//hw/top:edn_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/crypto/drivers:otbn",
         "//sw/device/lib/dif:aes",
@@ -1302,13 +1308,14 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(
         timeout = "eternal",
     ),
     deps = [
+        "//hw/top:dt",
         "//hw/top:edn_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:csrng",
         "//sw/device/lib/dif:edn",
@@ -1342,14 +1349,15 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(
         timeout = "long",
     ),
     deps = [
         "//hw/ip/aes:model",
+        "//hw/top:dt",
         "//hw/top:edn_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:aes",
         "//sw/device/lib/dif:csrng",
@@ -1374,13 +1382,14 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(
         timeout = "long",
     ),
     deps = [
+        "//hw/top:dt",
         "//hw/top:edn_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:csrng",
         "//sw/device/lib/dif:csrng_shared",
@@ -1406,13 +1415,14 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     silicon = silicon_params(
         tags = ["broken"],
     ),
     verilator = verilator_params(tags = ["broken"]),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:base",
@@ -1517,13 +1527,14 @@ opentitan_test(
             "//hw/top_earlgrey:fpga_cw310_sival": None,
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(
         timeout = "long",
     ),
     deps = [
         ":otbn_randomness_impl",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:base",
@@ -1551,17 +1562,19 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     # This test can take > 40 minutes, so mark it manual as it shouldn't run
     # in CI/nightlies.
     verilator = verilator_params(tags = ["manual"]),
     deps = [
+        "//hw/top:dt",
         "//hw/top:entropy_src_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:base",
         "//sw/device/lib/dif:csrng",
+        "//sw/device/lib/dif:edn",
         "//sw/device/lib/dif:entropy_src",
         "//sw/device/lib/dif:rv_core_ibex",
         "//sw/device/lib/runtime:log",
@@ -1582,11 +1595,12 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(timeout = "long"),
     deps = [
         ":otbn_randomness_impl",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:aes",
@@ -1623,11 +1637,12 @@ opentitan_test(
             "//hw/top_earlgrey:fpga_cw340_sival": None,
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     verilator = verilator_params(timeout = "long"),
     deps = [
         ":otbn_randomness_impl",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:aes",
@@ -1663,6 +1678,7 @@ opentitan_test(
             "//hw/top_earlgrey:fpga_cw340_sival": None,
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     # This test uses carefully tuned health test threshold values to trigger health test alerts
     # inside ENTROPY_SRC. Due to the probabilistic nature of the analog noise source producing the
@@ -1678,7 +1694,7 @@ opentitan_test(
     verilator = verilator_params(timeout = "long"),
     deps = [
         ":otbn_randomness_impl",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:aes",
@@ -1851,7 +1867,7 @@ opentitan_test(
     srcs = ["flash_ctrl_info_access_lc.c"],
     exec_env = {"//hw/top_earlgrey:sim_dv": None},
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:flash_ctrl",
         "//sw/device/lib/dif:lc_ctrl",
@@ -1886,13 +1902,15 @@ _FLASH_CTRL_INFO_ACCESS_LC_STATES = get_lc_items(
         exec_env = {
             "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
             "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw340_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw340_sival": None,
             "//hw/top_earlgrey:sim_qemu_rom_with_fake_keys": None,
         },
         fpga = fpga_params(
             otp = "//hw/top_earlgrey/data/otp:img_{}".format(lc_state),
         ),
         deps = [
-            "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+            "//hw/top:dt",
             "//sw/device/lib/base:mmio",
             "//sw/device/lib/dif:flash_ctrl",
             "//sw/device/lib/dif:lc_ctrl",
@@ -2454,10 +2472,19 @@ opentitan_test(
             "//hw/top_earlgrey:sim_dv": None,
             "//hw/top_earlgrey:sim_verilator": None,
             "//hw/top_earlgrey:fpga_cw310_test_rom": None,
+            "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw340_test_rom": None,
+            "//hw/top_earlgrey:fpga_cw340_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw340_sival": None,
+            "//hw/top_earlgrey:sim_qemu_rom_with_fake_keys": None,
             # This test is not expected to run on silicon, as it would require a very specific OTP configuration that is only useful for this test.
         },
     ),
     fpga = fpga_params(
+        otp = ":otp_ctrl_descrambling_otp_image",
+    ),
+    qemu = qemu_params(
         otp = ":otp_ctrl_descrambling_otp_image",
     ),
     deps = [
@@ -2947,13 +2974,14 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
     ),
     verilator = verilator_params(timeout = "long"),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/dif:otbn",
         "//sw/device/lib/runtime:ibex",
         "//sw/device/lib/runtime:irq",
@@ -2973,13 +3001,16 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
         {
             "//hw/top_earlgrey:silicon_creator": None,
+            "//hw/top_earlgrey:fpga_cw340_sival_rom_ext": None,
+            "//hw/top_darjeeling:sim_dv": None,
         },
     ),
     verilator = verilator_params(timeout = "long"),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/dif:otbn",
         "//sw/device/lib/dif:rv_plic",
         "//sw/device/lib/runtime:ibex",
@@ -3068,13 +3099,14 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
     ),
     verilator = verilator_params(timeout = "eternal"),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/dif:otbn",
         "//sw/device/lib/runtime:ibex",
         "//sw/device/lib/runtime:log",
@@ -3117,6 +3149,7 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
         {
             "//hw/top_earlgrey:fpga_cw310_sival": None,
             "//hw/top_earlgrey:silicon_creator": None,
@@ -3124,7 +3157,7 @@ opentitan_test(
     ),
     deps = [
         "//hw/ip/otbn/dv/smoke:smoke_test",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/dif:otbn",
         "//sw/device/lib/testing:entropy_testutils",
         "//sw/device/lib/testing:otbn_testutils",
@@ -3216,9 +3249,10 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
     ),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:csr",
         "//sw/device/lib/runtime:hart",
         "//sw/device/lib/runtime:irq",
@@ -3233,9 +3267,10 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
     ),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:csr",
         "//sw/device/lib/runtime:hart",
         "//sw/device/lib/runtime:irq",
@@ -4057,7 +4092,6 @@ opentitan_test(
     ),
     fpga = fpga_params(
         # This test requires the spi full duplex on the hyperdebug board.
-        tags = ["manual"],
         test_cmd = """
             --bootstrap="{firmware}"
             "{firmware:elf}"
@@ -4462,13 +4496,14 @@ opentitan_test(
     exec_env = dicts.omit(
         dicts.add(
             EARLGREY_TEST_ENVS,
+            DARJEELING_TEST_ENVS,
             EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
         ),
         # TODO (#26100): QEMU's `flashgen.py` script does not like this test.
         ["//hw/top_earlgrey:sim_qemu_rom_with_fake_keys"],
     ),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:csr",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/dif:sram_ctrl",
@@ -4629,13 +4664,14 @@ opentitan_test(
     srcs = ["sram_ctrl_subword_access_test.c"],
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
+        DARJEELING_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
     ),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/arch:device",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/base:mmio",
@@ -6287,6 +6323,7 @@ test_suite(
         exec_env = {
             "//hw/top_earlgrey:fpga_cw310_sival": None,
             "//hw/top_earlgrey:sim_dv": None,
+            "//hw/top_darjeeling:sim_dv": None,
         },
         fpga = fpga_params(
             needs_jtag = True,
@@ -6300,7 +6337,7 @@ test_suite(
             test_harness = "//sw/host/tests/chip/rv_dm:ndm_reset_req_when_cpu_halted",
         ),
         deps = [
-            "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+            "//hw/top:dt",
             "//sw/device/lib/dif:rstmgr",
             "//sw/device/lib/runtime:hart",
             "//sw/device/lib/runtime:log",
@@ -6481,7 +6518,7 @@ test_suite(
             test_harness = "//sw/host/tests/chip/rv_dm:access_after_hw_reset",
         ),
         deps = [
-            "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+            "//hw/top:dt",
             "//sw/device/lib/dif:rstmgr",
             "//sw/device/lib/runtime:hart",
             "//sw/device/lib/runtime:log",
@@ -6951,9 +6988,10 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
     ),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/arch:device",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/base:mmio",
@@ -6970,9 +7008,10 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        DARJEELING_TEST_ENVS,
     ),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/arch:device",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/base:mmio",
@@ -7120,14 +7159,17 @@ opentitan_binary(
         "rv_core_ibex_epmp_test.S",
         "rv_core_ibex_epmp_test.c",
     ],
-    exec_env = {
-        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
-        "//hw/top_earlgrey:fpga_cw340_rom_with_fake_keys": None,
-    },
+    exec_env = dicts.add(
+        {
+            "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw340_rom_with_fake_keys": None,
+        },
+        DARJEELING_TEST_ENVS,
+    ),
     kind = "ram",
     linker_script = "//sw/device/silicon_creator/manuf/lib:sram_program_linker_script",
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/arch:device",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/runtime:log",
@@ -7178,9 +7220,9 @@ opentitan_test(
     verilator = verilator_params(tags = ["manual"]),
     deps = [
         "//hw/top:clkmgr_c_regs",
+        "//hw/top:dt",
         "//hw/top:lc_ctrl_c_regs",
         "//hw/top:pinmux_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:clkmgr",
         "//sw/device/lib/dif:lc_ctrl",
@@ -7400,14 +7442,15 @@ opentitan_test(
         {
             "//hw/top_earlgrey:silicon_creator": None,
         },
+        DARJEELING_TEST_ENVS,
     ),
     # This takes around 2 hours to run on Verilator, and so should only be
     # run manually for debugging purposes.
     verilator = verilator_params(tags = ["manual"]),
     deps = [
         ":otbn_randomness_impl",
+        "//hw/top:dt",
         "//hw/top:entropy_src_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:aes",
@@ -7462,7 +7505,7 @@ opentitan_test(
     # in CI/nightlies.
     verilator = verilator_params(tags = ["manual"]),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:mmio",
         "//sw/device/lib/dif:rv_plic",
         "//sw/device/lib/dif:uart",
@@ -7562,7 +7605,7 @@ opentitan_test(
         test_harness = "//sw/host/tests/chip/sram_ctrl:sram_ctrl_lc_escalation",
     ),
     deps = [
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/arch:device",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/base:mmio",
@@ -7842,21 +7885,6 @@ opentitan_test(
 )
 
 opentitan_test(
-    name = "soc_proxy_external_alerts",
-    srcs = ["soc_proxy_external_alerts.c"],
-    exec_env = DARJEELING_TEST_ENVS,
-    deps = [
-        "//sw/device/lib/dif:alert_handler",
-        "//sw/device/lib/dif:rstmgr",
-        "//sw/device/lib/dif:soc_proxy",
-        "//sw/device/lib/runtime:log",
-        "//sw/device/lib/runtime:print",
-        "//sw/device/lib/testing:alert_handler_testutils",
-        "//sw/device/lib/testing/test_framework:ottf_main",
-    ],
-)
-
-opentitan_test(
     name = "soc_proxy_external_wakeup",
     srcs = ["soc_proxy_external_wakeup.c"],
     exec_env = DARJEELING_TEST_ENVS,
@@ -7882,9 +7910,7 @@ opentitan_test(
     deps = [
         "//hw/top_darjeeling/sw/autogen:top_darjeeling",
         "//sw/device/lib/dif:pinmux",
-        "//sw/device/lib/dif:rv_plic",
         "//sw/device/lib/dif:soc_proxy",
-        "//sw/device/lib/runtime:irq",
         "//sw/device/lib/runtime:log",
         "//sw/device/lib/runtime:print",
         "//sw/device/lib/testing/test_framework:ottf_main",

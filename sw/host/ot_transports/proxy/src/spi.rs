@@ -9,10 +9,10 @@ use opentitanlib::io::gpio;
 use opentitanlib::io::spi::{
     AssertChipSelect, MaxSizes, SpiError, Target, TargetChipDeassert, Transfer, TransferMode,
 };
-use opentitanlib::proxy::protocol::{
+use opentitanlib::util::voltage::Voltage;
+use ot_proxy_proto::{
     Request, Response, SpiRequest, SpiResponse, SpiTransferRequest, SpiTransferResponse,
 };
-use opentitanlib::util::voltage::Voltage;
 
 use super::{Inner, Proxy, ProxyError};
 
@@ -24,7 +24,7 @@ pub struct ProxySpi {
 impl ProxySpi {
     pub fn open(proxy: &Proxy, instance: &str) -> Result<Self> {
         let result = Self {
-            inner: Rc::clone(&proxy.inner),
+            inner: proxy.inner.clone(),
             instance: instance.to_string(),
         };
         Ok(result)

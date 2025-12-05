@@ -11,7 +11,7 @@ use opentitanlib::io::gpio::{
     GpioDacBangOperation, GpioError, GpioMonitoring, GpioPin, MonitoringReadResponse,
     MonitoringStartResponse, PinMode, PullMode,
 };
-use opentitanlib::proxy::protocol::{
+use ot_proxy_proto::{
     BitbangEntryRequest, BitbangEntryResponse, DacBangEntryRequest, GpioBitRequest,
     GpioBitResponse, GpioDacRequest, GpioDacResponse, GpioMonRequest, GpioMonResponse, GpioRequest,
     GpioResponse, Request, Response,
@@ -27,7 +27,7 @@ pub struct ProxyGpioPin {
 impl ProxyGpioPin {
     pub fn open(proxy: &Proxy, pinname: &str) -> Result<Self> {
         let result = Self {
-            inner: Rc::clone(&proxy.inner),
+            inner: proxy.inner.clone(),
             pinname: pinname.to_string(),
         };
         Ok(result)
@@ -120,7 +120,7 @@ pub struct GpioMonitoringImpl {
 impl GpioMonitoringImpl {
     pub fn new(proxy: &Proxy) -> Result<Self> {
         Ok(Self {
-            inner: Rc::clone(&proxy.inner),
+            inner: proxy.inner.clone(),
         })
     }
 
@@ -181,7 +181,7 @@ pub struct GpioBitbangingImpl {
 impl GpioBitbangingImpl {
     pub fn new(proxy: &Proxy) -> Result<Self> {
         Ok(Self {
-            inner: Rc::clone(&proxy.inner),
+            inner: proxy.inner.clone(),
         })
     }
 
@@ -256,7 +256,7 @@ impl GpioBitbanging for GpioBitbangingImpl {
             entries: req,
         })? {
             GpioBitResponse::Start => Ok(Box::new(GpioBitbangOperationImpl {
-                inner: Rc::clone(&self.inner),
+                inner: self.inner.clone(),
                 waveform,
             })),
             _ => bail!(ProxyError::UnexpectedReply()),
@@ -297,7 +297,7 @@ impl GpioBitbanging for GpioBitbangingImpl {
             entries: req,
         })? {
             GpioDacResponse::Start => Ok(Box::new(GpioDacBangOperationImpl {
-                inner: Rc::clone(&self.inner),
+                inner: self.inner.clone(),
             })),
             _ => bail!(ProxyError::UnexpectedReply()),
         }

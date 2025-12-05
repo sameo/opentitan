@@ -234,7 +234,9 @@ status_t clkmgr_testutils_enable_clock_counts_with_expected_thresholds(
 status_t clkmgr_testutils_check_measurement_enables(
     const dif_clkmgr_t *clkmgr, dif_toggle_t expected_status) {
   bool success = true;
-  for (int i = 0; i < kDifClkmgrMeasureClockCount; ++i) {
+  dt_clkmgr_t clkmgr_dt;
+  TRY(dif_clkmgr_get_dt(clkmgr, &clkmgr_dt));
+  for (size_t i = 0; i < dt_clkmgr_measurable_clock_count(clkmgr_dt); ++i) {
     dif_clkmgr_measure_clock_t clock = (dif_clkmgr_measure_clock_t)i;
     dif_toggle_t actual_status;
     TRY(dif_clkmgr_measure_counts_get_enable(clkmgr, clock, &actual_status));
@@ -249,7 +251,9 @@ status_t clkmgr_testutils_check_measurement_enables(
 
 status_t clkmgr_testutils_disable_clock_counts(const dif_clkmgr_t *clkmgr) {
   LOG_INFO("Disabling all clock count measurements");
-  for (int i = 0; i < kDifClkmgrMeasureClockCount; ++i) {
+  dt_clkmgr_t clkmgr_dt;
+  TRY(dif_clkmgr_get_dt(clkmgr, &clkmgr_dt));
+  for (size_t i = 0; i < dt_clkmgr_measurable_clock_count(clkmgr_dt); ++i) {
     dif_clkmgr_measure_clock_t clock = (dif_clkmgr_measure_clock_t)i;
     TRY(dif_clkmgr_disable_measure_counts(clkmgr, clock));
   }
@@ -274,9 +278,11 @@ status_t clkmgr_testutils_check_measurement_counts(const dif_clkmgr_t *clkmgr) {
 
 status_t clkmgr_testutils_enable_external_clock_blocking(
     const dif_clkmgr_t *clkmgr, bool is_low_speed) {
+#if defined(OPENTITAN_IS_EARLGREY)
   LOG_INFO("Configure clkmgr to enable external clock");
   TRY(dif_clkmgr_external_clock_set_enabled(clkmgr, is_low_speed));
   TRY(dif_clkmgr_wait_for_ext_clk_switch(clkmgr));
   LOG_INFO("Switching to external clock completes");
+#endif
   return OK_STATUS();
 }

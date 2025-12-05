@@ -8,7 +8,7 @@
 #include "sw/device/lib/dif/dif_aes.h"
 #include "sw/device/lib/testing/test_framework/check.h"
 
-#ifndef OPENTITAN_IS_ENGLISHBREAKFAST
+#ifdef AES_TESTUTILS_HAS_EDN_AND_CSRNG
 #include "sw/device/lib/dif/dif_csrng_shared.h"
 #include "sw/device/lib/testing/csrng_testutils.h"
 
@@ -35,7 +35,7 @@ enum {
   kAesTestutilsTimeout = (10 * 1000 * 1000),
 };
 
-#ifndef OPENTITAN_IS_ENGLISHBREAKFAST
+#ifdef AES_TESTUTILS_HAS_EDN_AND_CSRNG
 /**
  * Constants for switching AES masking off.
  */
@@ -173,7 +173,7 @@ status_t aes_testutils_csrng_kat(const dif_csrng_t *csrng) {
   memcpy(expected_state_generate.v, kCsrngVGenerate, sizeof(kCsrngVGenerate));
   memcpy(expected_state_generate.key, kCsrngKeyGenerate,
          sizeof(kCsrngKeyGenerate));
-  TRY(csrng_testutils_kat_generate(csrng, 1, kCsrngBlockLen,
+  TRY(csrng_testutils_kat_generate(csrng, 1, kCsrngBlockLen, NULL,
                                    kAesMaskingPrngZeroOutputSeed,
                                    &expected_state_generate));
 
@@ -198,7 +198,7 @@ status_t aes_testutils_csrng_kat(const dif_csrng_t *csrng) {
 
   // Generate one block containing the required seed for the AES masking PRNG
   // to output an all-zero vector.
-  TRY(csrng_testutils_kat_generate(csrng, 1, kCsrngBlockLen,
+  TRY(csrng_testutils_kat_generate(csrng, 1, kCsrngBlockLen, NULL,
                                    kAesMaskingPrngZeroOutputSeed,
                                    &expected_state_generate));
   return OK_STATUS();

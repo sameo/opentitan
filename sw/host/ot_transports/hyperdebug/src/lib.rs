@@ -10,13 +10,12 @@ use std::fs;
 use std::io::{Read, Write};
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail, ensure};
 use regex::Regex;
-use serde_annotate::Annotate;
 use serialport::TTYPort;
 
 use opentitanlib::backend::{Backend, BackendOpts, define_interface};
@@ -26,12 +25,10 @@ use opentitanlib::io::i2c::Bus;
 use opentitanlib::io::jtag::{JtagChain, JtagParams};
 use opentitanlib::io::spi::Target;
 use opentitanlib::io::uart::Uart;
-use opentitanlib::transport::MaintainConnection;
-use opentitanlib::transport::common::fpga::{ClearBitstream, FpgaProgram};
-use opentitanlib::transport::common::uart::flock_serial;
+use opentitanlib::io::uart::serial::flock_serial;
 use opentitanlib::transport::{
-    Capabilities, Capability, SetJtagPins, Transport, TransportError, TransportInterfaceType,
-    UpdateFirmware,
+    Capabilities, Capability, FpgaOps, ProgressIndicator, SetJtagPins, Transport, TransportError,
+    TransportInterfaceType, UpdateFirmware,
 };
 use opentitanlib::util::fs::builtin_file;
 use opentitanlib::util::usb::UsbBackend;
@@ -85,7 +82,7 @@ pub trait Flavor {
     }
     fn get_default_usb_vid() -> u16;
     fn get_default_usb_pid() -> u16;
-    fn load_bitstream(_fpga_program: &FpgaProgram) -> Result<()> {
+    fn load_bitstream(_bitstream: &[u8], _progress: &dyn ProgressIndicator) -> Result<()> {
         Err(TransportError::UnsupportedOperation.into())
     }
     fn clear_bitstream() -> Result<()> {
@@ -302,7 +299,7 @@ impl<T: Flavor> Hyperdebug<T> {
                 console_tty: console_tty.ok_or_else(|| {
                     TransportError::CommunicationError("Missing console interface".to_string())
                 })?,
-                conn: RefCell::new(Weak::new()),
+                conn: RefCell::new(None),
                 usb_device: RefCell::new(device),
                 selected_spi: Cell::new(0),
             }),
@@ -424,7 +421,7 @@ impl<T: Flavor> Hyperdebug<T> {
 /// even if the caller lets the outer Hyperdebug struct run out of scope.
 pub struct Inner {
     console_tty: PathBuf,
-    conn: RefCell<Weak<Conn>>,
+    conn: RefCell<Option<Rc<Conn>>>,
     usb_device: RefCell<UsbBackend>,
     selected_spi: Cell<u8>,
 }
@@ -445,20 +442,15 @@ pub struct Conn {
     first_use: Cell<bool>,
 }
 
-// The way that the HyperDebug allows callers to request optimization for a sequence of operations
-// without other `opentitantool` processes meddling with the USB devices, is to let the caller
-// hold an `Rc`-reference to the `Conn` struct, thereby keeping the USB connection alive.
-impl MaintainConnection for Conn {}
-
 impl Inner {
     /// General timeout for response on the HyperDebug text-based USB command console.
     const COMMAND_TIMEOUT: Duration = Duration::from_millis(3000);
 
     /// Establish connection with HyperDebug console USB interface.
     pub fn connect(&self) -> Result<Rc<Conn>> {
-        if let Some(conn) = self.conn.borrow().upgrade() {
+        if let Some(ref conn) = *self.conn.borrow() {
             // The driver already has a connection, use it.
-            return Ok(conn);
+            return Ok(conn.clone());
         }
         // Establish a new connection.
         let port_name = self
@@ -476,13 +468,9 @@ impl Inner {
             console_port: RefCell::new(port),
             first_use: Cell::new(true),
         });
-        // Return a (strong) reference to the newly opened connection, while keeping a weak
-        // reference to the same in this `Inner` object.  The result is that if the caller keeps
-        // the strong reference alive long enough, the next invocation of `connect()` will be able
-        // to re-use the same instance.  If on the other hand, the caller drops their reference,
-        // then the weak reference will not keep the instance alive, and next time a new
-        // connection will be made.
-        *self.conn.borrow_mut() = Rc::downgrade(&conn);
+        // Keep a reference to the newly opened connection, so the next invocation of `connect()`
+        // will be able to re-use the same instance.
+        *self.conn.borrow_mut() = Some(conn.clone());
         Ok(conn)
     }
 
@@ -673,7 +661,7 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
     fn spi(&self, instance: &str) -> Result<Rc<dyn Target>> {
         let (enable_cmd, idx) = T::spi_index(&self.inner, instance)?;
         if let Some(instance) = self.cached_io_interfaces.spis.borrow().get(&idx) {
-            return Ok(Rc::clone(instance));
+            return Ok(instance.clone());
         }
         let instance: Rc<dyn Target> = Rc::new(spi::HyperdebugSpiTarget::open(
             &self.inner,
@@ -685,22 +673,22 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
         self.cached_io_interfaces
             .spis
             .borrow_mut()
-            .insert(idx, Rc::clone(&instance));
+            .insert(idx, instance.clone());
         Ok(instance)
     }
 
     // Create I2C Target instance, or return one from a cache of previously created instances.
     fn i2c(&self, name: &str) -> Result<Rc<dyn Bus>> {
         if let Some(instance) = self.cached_io_interfaces.i2cs_by_name.borrow().get(name) {
-            return Ok(Rc::clone(instance));
+            return Ok(instance.clone());
         }
         let (idx, mode) = T::i2c_index(&self.inner, name)?;
         if let Some(instance) = self.cached_io_interfaces.i2cs_by_index.borrow().get(&idx) {
             self.cached_io_interfaces
                 .i2cs_by_name
                 .borrow_mut()
-                .insert(name.to_string(), Rc::clone(instance));
-            return Ok(Rc::clone(instance));
+                .insert(name.to_string(), instance.clone());
+            return Ok(instance.clone());
         }
         let cmsis_google_capabilities = self.get_cmsis_google_capabilities()?;
         let instance: Rc<dyn Bus> = Rc::new(
@@ -734,11 +722,11 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
         self.cached_io_interfaces
             .i2cs_by_index
             .borrow_mut()
-            .insert(idx, Rc::clone(&instance));
+            .insert(idx, instance.clone());
         self.cached_io_interfaces
             .i2cs_by_name
             .borrow_mut()
-            .insert(name.to_string(), Rc::clone(&instance));
+            .insert(name.to_string(), instance.clone());
         Ok(instance)
     }
 
@@ -752,7 +740,7 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
                     .borrow()
                     .get(&uart_interface.tty)
                 {
-                    return Ok(Rc::clone(instance));
+                    return Ok(instance.clone());
                 }
                 let supports_clearing_queues =
                     self.get_cmsis_google_capabilities()? & Self::GOOGLE_CAP_UART_QUEUE_CLEAR != 0;
@@ -764,7 +752,7 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
                 self.cached_io_interfaces
                     .uarts
                     .borrow_mut()
-                    .insert(uart_interface.tty.clone(), Rc::clone(&instance));
+                    .insert(uart_interface.tty.clone(), instance.clone());
                 Ok(instance)
             }
             _ => Err(TransportError::InvalidInstance(
@@ -784,11 +772,8 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
                 .borrow_mut()
                 .entry(pinname.to_string())
             {
-                Entry::Vacant(v) => {
-                    let u = v.insert(T::gpio_pin(&self.inner, pinname)?);
-                    Rc::clone(u)
-                }
-                Entry::Occupied(o) => Rc::clone(o.get()),
+                Entry::Vacant(v) => v.insert(T::gpio_pin(&self.inner, pinname)?).clone(),
+                Entry::Occupied(o) => o.get().clone(),
             },
         )
     }
@@ -831,7 +816,11 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
         )?))
     }
 
-    fn dispatch(&self, action: &dyn Any) -> Result<Option<Box<dyn Annotate>>> {
+    fn fpga_ops(&self) -> Result<&dyn FpgaOps> {
+        Ok(self)
+    }
+
+    fn dispatch(&self, action: &dyn Any) -> Result<Option<Box<dyn erased_serde::Serialize>>> {
         if let Some(update_firmware_action) = action.downcast_ref::<UpdateFirmware>() {
             let usb_vid = self.inner.usb_device.borrow().get_vendor_id();
             let usb_pid = self.inner.usb_device.borrow().get_product_id();
@@ -870,10 +859,6 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
                 }
                 _ => Err(TransportError::UnsupportedOperation.into()),
             }
-        } else if let Some(fpga_program) = action.downcast_ref::<FpgaProgram>() {
-            T::load_bitstream(fpga_program).map(|_| None)
-        } else if action.downcast_ref::<ClearBitstream>().is_some() {
-            T::clear_bitstream().map(|_| None)
         } else {
             Err(TransportError::UnsupportedOperation.into())
         }
@@ -900,14 +885,20 @@ impl<T: Flavor> Transport for Hyperdebug<T> {
         Ok(new_jtag)
     }
 
-    /// The way that the HyperDebug driver allows callers to request optimization for a sequence
-    /// of operations without other `opentitantool` processes meddling with the USB devices, is to
-    /// let the caller hold an `Rc`-reference to the `Conn` struct, thereby keeping the USB
-    /// connection alive.  Callers should only hold ond to the object as long as they can
-    /// guarantee that no other `opentitantool` processes simultaneously attempt to access the
-    /// same HyperDebug USB device.
-    fn maintain_connection(&self) -> Result<Rc<dyn MaintainConnection>> {
-        Ok(self.inner.connect()?)
+    fn relinquish_exclusive_access(&self, callback: Box<dyn FnOnce() + '_>) -> Result<()> {
+        *self.inner.conn.borrow_mut() = None;
+        callback();
+        Ok(())
+    }
+}
+
+impl<T: Flavor> FpgaOps for Hyperdebug<T> {
+    fn load_bitstream(&self, bitstream: &[u8], progress: &dyn ProgressIndicator) -> Result<()> {
+        T::load_bitstream(bitstream, progress)
+    }
+
+    fn clear_bitstream(&self) -> Result<()> {
+        T::clear_bitstream()
     }
 }
 
@@ -998,11 +989,11 @@ impl<B: Board> Flavor for ChipWhispererFlavor<B> {
     fn get_default_usb_pid() -> u16 {
         StandardFlavor::get_default_usb_pid()
     }
-    fn load_bitstream(fpga_program: &FpgaProgram) -> Result<()> {
+    fn load_bitstream(bitstream: &[u8], progress: &dyn ProgressIndicator) -> Result<()> {
         // Try to establish a connection to the native Chip Whisperer interface
         // which we will use for bitstream loading.
         let board = ChipWhisperer::<B>::new(None, None, None, &[])?;
-        board.load_bitstream(fpga_program)?;
+        board.load_bitstream(bitstream, progress)?;
         Ok(())
     }
     fn clear_bitstream() -> Result<()> {

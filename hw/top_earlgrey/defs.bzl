@@ -11,6 +11,9 @@ EARLGREY = opentitan_top(
     name = "earlgrey",
     hjson = "//hw/top_earlgrey/data/autogen:top_earlgrey.gen.hjson",
     top_lib = "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+    top_rtl = "//hw/top_earlgrey:rtl_files",
+    top_verilator_core = ["lowrisc:dv:top_earlgrey_chip_verilator_sim"],
+    top_verilator_binary = {"binary": ["lowrisc_dv_top_earlgrey_chip_verilator_sim_0.1/sim-verilator/Vchip_sim_tb"]},
     top_ld = "//hw/top_earlgrey/sw/autogen:top_earlgrey_memory",
     otp_map = "//hw/top_earlgrey/data/otp:otp_ctrl_mmap.hjson",
     std_otp_overlay = EARLGREY_STD_OTP_OVERLAYS,
@@ -19,6 +22,7 @@ EARLGREY = opentitan_top(
     secret_cfgs = {
         "testing": "//hw/top_earlgrey/data/autogen:top_earlgrey.secrets.testing.gen.hjson",
     },
+    silicon_creator_hooks = "//hw/top_earlgrey/sw/device/silicon_creator:hooks",
 )
 
 EARLGREY_SLOTS = {

@@ -17,18 +17,6 @@
                     value: "0x0",
                 },
                 {
-                    name: "OWNER_SW_CFG_ROM_BOOTSTRAP_DIS",
-                    // Enable bootstrap. See `hardened_bool_t` in
-                    // sw/lib/sw/device/base/hardened.h.
-                    value: "0x1d4",
-                },
-                {
-                    name: "OWNER_SW_CFG_ROM_KEYMGR_ROM_EXT_MEAS_EN",
-                    // Set to 0x739 to use the ROM_EXT hash measurement as the
-                    // key manager attestation binding value.
-                    value: "0x0",
-                },
-                {
                     name: "OWNER_SW_CFG_ROM_ALERT_CLASS_EN"
                     // Set the enables to kAlertEnableNone.
                     // See `alert_enable_t`
@@ -48,34 +36,6 @@
                     // See `alert_class_t`
                     // in sw/device/silicon_creator/lib/drivers/alert.h
                     value: [
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
-                        "0x94949494",
                         "0x94949494",
                         "0x94949494",
                         "0x94949494",
@@ -221,19 +181,19 @@
                 //    and enter the new values in this file.
                 {
                     name: "OWNER_SW_CFG_ROM_ALERT_DIGEST_DEV",
-                    value: "0x8a12908b",
+                    value: "0xce4d05a",
                 },
                 {
                     name: "OWNER_SW_CFG_ROM_ALERT_DIGEST_PROD",
-                    value: "0xe4bab764",
+                    value: "0x624cf7b5",
                 },
                 {
                     name: "OWNER_SW_CFG_ROM_ALERT_DIGEST_PROD_END",
-                    value: "0x10f153e1",
+                    value: "0x96071330",
                 },
                 {
                     name: "OWNER_SW_CFG_ROM_ALERT_DIGEST_RMA",
-                    value: "0x4ec41fc0",
+                    value: "0xc8325f11",
                 }
             ],
         }
